@@ -4,5 +4,5 @@ Ideje za enostavna začetna stanja
 
 Ideje za končno verzjo:
 - štiri v vrsto
-- 
+
 
