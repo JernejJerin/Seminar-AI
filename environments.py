@@ -36,6 +36,8 @@ class Sokoban(Environment):
 			"right": self.possibleActions[3],
 		}
 
+		self.endOnEdgeCount = sum(self._on_edge(loc) for loc in self.endPosSet)
+
 	def printState(self, state):
 		agentPos = state[0]
 		boxPosSet = set(state[1:]) # set optimizes search
@@ -70,22 +72,33 @@ class Sokoban(Environment):
 		boxPosSet = set(state[1:]) # set optimizes search
 		newPos = self._add(agentPos, action) # get new position with respect to action
 		boxList = [] # new box positions
-		reward = -1 # agent reward
+		reward = -10 # agent reward
 		isTerminalState = False
-		boxInEndPosCount = 0 # count how many boxes are in end position
+		
 		for boxPos in boxPosSet:
 			newBoxPos = boxPos
 			# check if new position moves a box
 			if boxPos == newPos:
 				newBoxPos = self._add(boxPos, action)
-				reward = 10
+				reward = 30
 			if boxPos in self.endPosSet:
 				boxInEndPosCount += 1
 			boxList.append(newBoxPos)
 
+		boxInEndPosCount = sum(box in self.endPosSet for box in boxList)
+		boxOnEdgeCount = sum(self._on_edge(loc) for loc in boxList)
+		# Check if the number of boxes on edges
+		# exceeds number of ends on edge
+		if boxOnEdgeCount > self.endOnEdgeCount:
+			# When a box is on the edge it cannot be moved to the center
+			# and that is why the game is over
+			# TODO: Jernej, check if this is a fact
+			reward = -1000
+			isTerminalState = True
+
 		# check if we are finished
 		if boxInEndPosCount == len(self.endPosSet):
-			reward = 100
+			reward = 1000
 			isTerminalState = True
 		return ((newPos, ) + tuple(boxList), 
 				reward, 
@@ -93,6 +106,12 @@ class Sokoban(Environment):
 
 	def _in_borders(self, action):
 		return 0 <= action[0] < self.size[0] and 0 <= action[1] < self.size[1]
+
+	def _on_edge(self, loc):
+		"""
+		Check if location loc=(x,y) is on environment edge
+		"""
+		return sum((loc[i] in {0, self.size[i]-1}) for i in range(2)) > 0
 
 	def _add(self, absolute, relative):
 		return (absolute[0] + relative[0], absolute[1] + relative[1])
@@ -109,6 +128,10 @@ class Sokoban(Environment):
 				continue
 			if newPos in boxPosSet: # we are moving a box
 				newBoxPos = self._add(newPos, diff)
+				otherBoxes = boxPosSet - {newPos, } # get other boxes
+				if newBoxPos in otherBoxes:
+					# you cannot move two boxes in same time
+					continue
 				if not self._in_borders(newBoxPos) or newBoxPos in self.stonePosSet:
 					continue
 			# everything is OK
@@ -116,4 +139,9 @@ class Sokoban(Environment):
 		return actions
 	
 
-simple1 = Sokoban((5,5), (1,1), [(1,2), (3,1)], [(2,0)], [], [(2, 2)])
+simple1 = Sokoban((5,5), 
+				  agentPos=(1,1), 
+				  boxPosList=[(1,2)], 
+				  endPosList=[(2,1)], 
+				  holePosList=[], 
+				  stonePosList=[(2, 2)])
