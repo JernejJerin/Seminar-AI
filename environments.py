@@ -145,3 +145,10 @@ simple1 = Sokoban((5,5),
 				  endPosList=[(2,1)], 
 				  holePosList=[], 
 				  stonePosList=[(2, 2)])
+
+simple2 = Sokoban((10, 10), 
+				  agentPos=(1,1), 
+				  boxPosList=[(1,2)], 
+				  endPosList=[(2,1)], 
+				  holePosList=[], 
+				  stonePosList=[(2, 2)])

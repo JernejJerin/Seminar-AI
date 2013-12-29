@@ -29,7 +29,7 @@ def _getEstimates(transs, utils, currState, currActions=None):
 
 
 def adp_random_exploration(env, transs={}, utils={}, freqs={}, 
-						   t = 1, tStep=0.05, alpha=_alpha, maxItr=100000):
+						   t = 1, tStep=0.02, alpha=_alpha, maxItr=100000):
 	"""
 	Active ADP learning algorithm which returns the best
 	policy for a given environment env and experience
@@ -64,7 +64,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		# or do some random exploration
 		
 		newState, reward, isTerminal = env.do(state, bestAction)
-		
+		freqs.setdefault(newState, 0)
+		freqs[newState] += 1
+
 		env.printState(state)
 		print actions, bestAction, isTerminal
 		env.printState(newState)
@@ -84,6 +86,68 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		
 		state = newState
 		t, itr = t+tStep, itr+1
+		if itr >= maxItr:
+			break
+	return itr
+
+def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, 
+						   alpha=_alpha, maxItr=100000):
+	"""
+	Active ADP learning algorithm which returns the best
+	policy for a given environment env and experience
+	dictionary exp
+	
+	The experience dictionary exp can be empty if 
+	the agent has no experience with the environment
+	but can also be full with values from
+	previous trials
+
+	The algorithm returns the number of iterations
+	needed to reach a terminal state
+	"""
+	itr = 0
+	isTerminal = False
+	state = env.getStartingState()
+	
+
+	actions = env.getActions(state)
+	rewardEstimate, bestAction = None, None
+	if len(utils) > 0: # if this is not the first trial
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+
+	while not isTerminal: # while not terminal
+		t = len(freqs) or 1
+		if random.random() < 1./t or bestAction is None:
+			# If it is the first iteration or exploration event
+			# then randomly choose an action
+			bestAction = random.choice(actions)
+		
+		# do the action with the best policy
+		# or do some random exploration
+		
+		newState, reward, isTerminal = env.do(state, bestAction)
+		freqs.setdefault(newState, 0)
+		freqs[newState] += 1
+
+		env.printState(state)
+		print actions, bestAction, isTerminal
+		env.printState(newState)
+		print "----------"
+		print "----------"
+		print "----------"
+
+		# update transition table
+		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
+		transs[state][bestAction][newState] += 1
+
+		actions = env.getActions(newState)
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+		
+		# Update utility
+		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
+		
+		state = newState
+		itr = itr+1
 		if itr >= maxItr:
 			break
 	return itr
