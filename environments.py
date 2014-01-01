@@ -100,14 +100,18 @@ class Sokoban(Environment):
 
         # After player move check positions for boxes. Do we have to iterate to the end over all the boxes?
         # Only one box can be moved at a time so we could break out early.
-        for boxPos in boxPosSet:
-            # check if new position moves a box
-            if boxPos == newPos:
-                # Move box.
-                newBoxPos = self._add(boxPos, action)
-                reward = 30
-                boxList.append(newBoxPos)
-            boxList.append(boxPos)
+        if newPos in boxPosSet:
+            for boxPos in boxPosSet:
+                # check if new position moves a box
+                if boxPos == newPos:
+                    # Move box.
+                    newBoxPos = self._add(boxPos, action)
+                    reward = 30
+                    boxList.append(newBoxPos)
+                boxList.append(boxPos)
+        else:
+            boxList = tuple(boxPosSet)
+
         # IN THIS SECTION WE SHOULD FIRST TRY TO FINDDEADLOCKS!
         # There are three papers:
         # http://www.lamsade.dauphine.fr/~cazenave/papers/sokoban.pdf
