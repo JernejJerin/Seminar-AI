@@ -53,6 +53,11 @@ class Sokoban(Environment):
 		# Count for end position.
 		self.endOnEdgeCount = sum(self._on_edge(loc) for loc in self.endPosSet)
 
+		m = self.size[0] - 1
+		n = self.size[1] - 1
+		# define environment corners for terminal state detection
+		self.envCorners = {(0, 0, ), (0, n, ), (m, 0, ), (m, n, )}
+
 	def _init_from_image(self, image):
 		boxPosList = [] # TODO: sort?
 		agentPos = [None, None, ]
@@ -201,7 +206,8 @@ class Sokoban(Environment):
 		NW = left-up). This can be helpful as in if box is in corner but
 		not in position, then the game cannot be solved.
 		"""
-		return self._add(box, self.possibleActions[0]) in self.stonePosSet and self._add(box, self.possibleActions[3]) in self.stonePosSet or \
+		return box in self.envCorners or \
+			   self._add(box, self.possibleActions[0]) in self.stonePosSet and self._add(box, self.possibleActions[3]) in self.stonePosSet or \
 			   self._add(box, self.possibleActions[3]) in self.stonePosSet and self._add(box, self.possibleActions[1]) in self.stonePosSet or \
 			   self._add(box, self.possibleActions[1]) in self.stonePosSet and self._add(box, self.possibleActions[2]) in self.stonePosSet or \
 			   self._add(box, self.possibleActions[2]) in self.stonePosSet and self._add(box, self.possibleActions[0]) in self.stonePosSet
