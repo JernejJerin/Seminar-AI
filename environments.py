@@ -29,7 +29,7 @@ class Sokoban(Environment):
 
 			# Start position is our position + positions of boxes.
 			# Position is define for dynamic objects, in this case agent and boxes.
-			self.startPos = (agentPos, ) + tuple(boxPosList)
+			self.startPos = (agentPos, ) + tuple(sorted(boxPosList))
 
 			# Terminal positions or positions to which the boxes need to be moved.
 			self.endPosSet = set(endPosList)
@@ -86,9 +86,8 @@ class Sokoban(Environment):
 				if char in fun:
 					fun[char](i, self.size[1] - j - 1)
 
-
-		self.startPos = (tuple(agentPos), ) + tuple(boxPosList)
-
+		self.startPos = (tuple(agentPos), ) + tuple(sorted(boxPosList))
+		
 	def printState(self, state):
 		# In the beginning state is self.startPos!
 		agentPos = state[0]
@@ -151,7 +150,8 @@ class Sokoban(Environment):
 						# If new position is in end position then we give greater reward.
 						reward = 30
 					boxList.append(newBoxPos)
-				boxList.append(boxPos)
+				else:
+					boxList.append(boxPos)
 		else:
 			boxList = tuple(boxPosSet)
 
@@ -159,6 +159,7 @@ class Sokoban(Environment):
 		# _deadlock_detection(newBoxPos, boxList)
 
 		boxInEndPosCount = sum(box in self.endPosSet for box in boxList)
+
 		# check if we are finished
 		if boxInEndPosCount == len(self.endPosSet):
 			reward = 1000
@@ -168,7 +169,7 @@ class Sokoban(Environment):
 			reward = -1000
 			isTerminalState = True
 		# First position is new position of a player.
-		return ((newPos, ) + tuple(boxList),
+		return ((newPos, ) + tuple(sorted(boxList)),
 				reward,
 				isTerminalState, )
 
@@ -284,9 +285,10 @@ simple3 = Sokoban((5, 5),
 				  stonePosList=[(2, 2), (2, 3), (3, 2)])
 
 simple4 = Sokoban([
-	"#####",
-	"#A  #",
-	"# B #",
-	"#* ##",
-	"#####"
+	"######",
+	"#A   #",
+	"# B  #",
+	"#    # ",
+	"#*  ##",
+	"######"
 ])
