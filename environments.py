@@ -11,14 +11,17 @@ class Environment():
 	def getActions(self, state):
 		raise NotImplementedError("getActions")
 
+
 class Sokoban(Environment):
 	def __init__(self, size_or_image=(5, 5),
 				 agentPos=(0, 0),
 				 boxPosList=[],
 				 endPosList=[],
-				 holePosList=[],
-				 stonePosList=[]):
+				 stonePosList=[],
+				 steps_limit=1000):
+
 		if (type(size_or_image) in [str, unicode]):
+			# If contains image of environment.
 			self._init_from_image(size_or_image.split("\n"))
 		elif len(size_or_image) == 2 and type(size_or_image[0]) == int and type(size_or_image[1]) == int:
 			self.size = size_or_image
@@ -30,12 +33,9 @@ class Sokoban(Environment):
 
 			# Terminal positions or positions to which the boxes need to be moved.
 			self.endPosSet = set(endPosList)
-
-			# Hole?
-			self.holePosSet = set(holePosList)
 		elif hasattr(size_or_image, "__iter__"): # check if iterable
 			self._init_from_image(size_or_image)
-		
+
 		# Using notation of first columns then rows.
 		self.possibleActions = [
 			(0, +1), # up
@@ -50,20 +50,21 @@ class Sokoban(Environment):
 			"right": self.possibleActions[3],
 		}
 
-		# Count for end position.
-		self.endOnEdgeCount = sum(self._on_edge(loc) for loc in self.endPosSet)
-
 		m = self.size[0] - 1
 		n = self.size[1] - 1
+
 		# define environment corners for terminal state detection
 		self.envCorners = {(0, 0, ), (0, n, ), (m, 0, ), (m, n, )}
+
+		# Number of steps or actions executed and the limit.
+		self.steps = 0
+		self.steps_limit = steps_limit
 
 	def _init_from_image(self, image):
 		boxPosList = [] # TODO: sort?
 		agentPos = [None, None, ]
 		self.stonePosSet = set()
 		self.endPosSet = set()
-		self.holePosSet = set()
 		def _a(i, j):
 			agentPos[0] = i
 			agentPos[1] = j
@@ -73,24 +74,21 @@ class Sokoban(Environment):
 			self.stonePosSet.add((i, j, ))
 		def _e(i, j):
 			self.endPosSet.add((i, j, ))
-		def _h(i, j):
-			self.holePosSet.add((i, j, ))
 		fun = {
 			"A": _a,
 			"B": _b,
 			"*": _e,
 			"#": _s,
-			"o": _h,
 		}
 		self.size = (len(image[0]), len(image), )
 		for j, row in enumerate(image):
 			for i, char in enumerate(row):
 				if char in fun:
 					fun[char](i, self.size[1] - j - 1)
-		
-		
+
+
 		self.startPos = (tuple(agentPos), ) + tuple(boxPosList)
-		
+
 	def printState(self, state):
 		# In the beginning state is self.startPos!
 		agentPos = state[0]
@@ -113,8 +111,6 @@ class Sokoban(Environment):
 					line += "B"
 				elif pt in self.endPosSet:
 					line += "*"
-				elif pt in self.holePosSet:
-					line += "o"
 				elif pt in self.stonePosSet:
 					line += "#"
 				else:
@@ -129,6 +125,7 @@ class Sokoban(Environment):
 		return self.startPos
 
 	def do(self, state, action):
+		self.steps += 1
 		# Select appropriate action given notation.
 		if action in self.possibleActionsDict:
 			action = self.possibleActionsDict[action]
@@ -139,55 +136,36 @@ class Sokoban(Environment):
 		boxList = [] # new box positions
 		reward = -10 # agent reward. For evey additional move the agent gets negative points.
 		isTerminalState = False
-		newBoxPos = None;
+		newBoxPos = None
 
-		# After player move check positions for boxes. Do we have to iterate to the end over all the boxes?
-		# Only one box can be moved at a time so we could break out early.
+		# After player move check for new positions of boxes.
 		if newPos in boxPosSet:
 			for boxPos in boxPosSet:
 				# check if new position moves a box
 				if boxPos == newPos:
-					# Move box.
 					newBoxPos = self._add(boxPos, action)
-					reward = 30
+
+					# Reward for moving a box.
+					reward = 10
+					if newBoxPos in self.endPosSet:
+						# If new position is in end position then we give greater reward.
+						reward = 30
 					boxList.append(newBoxPos)
 				boxList.append(boxPos)
 		else:
 			boxList = tuple(boxPosSet)
 
-		# IN THIS SECTION WE SHOULD FIRST TRY TO FINDDEADLOCKS!
-		# There are three papers:
-		# http://www.lamsade.dauphine.fr/~cazenave/papers/sokoban.pdf
-		# http://webdocs.cs.ualberta.ca/~jonathan/publications/ai_publications/ai98_soko.pdf
-		# http://weetu.net/Timo-Virkkala-Solving-Sokoban-Masters-Thesis.pdf
-		# I am inclining towards last (master thesis), where on page 44 there is a description
-		# of simple deadlock detection in O(1) time.
+		# Finding deadlocks. We will first try without this.
+		# _deadlock_detection(newBoxPos, boxList)
 
-		# Check for situations where box cannot be moved any more to any of the possible end positions.
-		# First we start with corner position.
-		if newBoxPos is not None and newBoxPos not in self.endPosSet and self._in_corner(newBoxPos):
-			reward = -1000
-			isTerminalState = True
-
-		# How many boxes are in end position and on edge of environment?
 		boxInEndPosCount = sum(box in self.endPosSet for box in boxList)
-		boxOnEdgeCount = sum(self._on_edge(loc) for loc in boxList)
-		# Check if the number of boxes on edges
-		# exceeds number of ends on edge
-		if boxOnEdgeCount > self.endOnEdgeCount:
-			# When a box is on the edge it cannot be moved to the center
-			# and that is why the game is over
-			# TODO: Jernej, check if this is a fact
-			# This is true. You cannot move the box away from edge but you can move it along the edge.
-			# And this of course only applies if you are not at the corner. Then you are stuck.
-			# TODO: But we should check for every edge (four edges) if the number of
-			# TODO: end positions for each edge does not exceed the number of boxes in each edge.
-			reward = -1000
-			isTerminalState = True
-
 		# check if we are finished
 		if boxInEndPosCount == len(self.endPosSet):
 			reward = 1000
+			isTerminalState = True
+
+		if self.steps > self.steps_limit:
+			reward = -1000
 			isTerminalState = True
 		# First position is new position of a player.
 		return ((newPos, ) + tuple(boxList),
@@ -225,6 +203,39 @@ class Sokoban(Environment):
 		# Checking if agent moves out of the environment is done outside.
 		return (absolute[0] + relative[0], absolute[1] + relative[1])
 
+	def _deadlock_detection(self, newBoxPos, boxList):
+		"""
+		Detecting deadlock positions in sokoban. Currently not used!
+		"""
+		# IN THIS SECTION WE SHOULD FIRST TRY TO FIND DEADLOCKS!
+		# There are three papers:
+		# http://www.lamsade.dauphine.fr/~cazenave/papers/sokoban.pdf
+		# http://webdocs.cs.ualberta.ca/~jonathan/publications/ai_publications/ai98_soko.pdf
+		# http://weetu.net/Timo-Virkkala-Solving-Sokoban-Masters-Thesis.pdf
+		# I am inclining towards last (master thesis), where on page 44 there is a description
+		# of simple deadlock detection in O(1) time.
+
+		# Check for situations where box cannot be moved any more to any of the possible end positions.
+		# First we start with corner position.
+		if newBoxPos is not None and newBoxPos not in self.endPosSet and self._in_corner(newBoxPos):
+			reward = -1000
+			isTerminalState = True
+
+		# How many boxes are in end position and on edge of environment?
+		boxOnEdgeCount = sum(self._on_edge(loc) for loc in boxList)
+		# Check if the number of boxes on edges
+		# exceeds number of ends on edge
+		if boxOnEdgeCount > sum(self._on_edge(loc) for loc in self.endPosSet):
+			# When a box is on the edge it cannot be moved to the center
+			# and that is why the game is over
+			# TODO: Jernej, check if this is a fact
+			# This is true. You cannot move the box away from edge but you can move it along the edge.
+			# And this of course only applies if you are not at the corner. Then you are stuck.
+			# TODO: But we should check for every edge (four edges) if the number of
+			# TODO: end positions for each edge does not exceed the number of boxes in each edge.
+			reward = -1000
+			isTerminalState = True
+
 	def getActions(self, state):
 		agentPos = state[0]
 		boxPosSet = set(state[1:]) # set optimizes search
@@ -257,14 +268,12 @@ simple1 = Sokoban((5,5),
 				  agentPos=(1,1),
 				  boxPosList=[(1,2)],
 				  endPosList=[(2,1)],
-				  holePosList=[],
 				  stonePosList=[(2, 2)])
 
 simple2 = Sokoban((10, 10), 
 				  agentPos=(1,1),
 				  boxPosList=[(1,2)],
 				  endPosList=[(2,1)],
-				  holePosList=[],
 				  stonePosList=[(2, 2)])
 
 # Check for corner detection.
@@ -272,7 +281,6 @@ simple3 = Sokoban((5, 5),
 				  agentPos=(0,0),
 				  boxPosList=[(3,3)],
 				  endPosList=[(4,1)],
-				  holePosList=[],
 				  stonePosList=[(2, 2), (2, 3), (3, 2)])
 
 simple4 = Sokoban([
