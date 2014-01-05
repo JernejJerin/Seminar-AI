@@ -1,5 +1,6 @@
 __author__ = 'Ziga Stopinsek & Jernej Jerin'
 import random
+import copy
 import environmentMaze as em
 
 
@@ -53,10 +54,10 @@ def padp_random_exploration(env, policy, trans_table={}, util_table={}, freq_tab
 	previous_state = None
 	previous_action = None
 
-	while not is_terminal:
+	while True:
 		# We have not reached the terminal state.
 		# Set reward for current state.
-		if reward_table.get(current_state) is None:
+		if current_state not in reward_table:
 			reward_table.setdefault(current_state, current_reward)
 			util_table.setdefault(current_state, current_reward)
 
@@ -72,35 +73,34 @@ def padp_random_exploration(env, policy, trans_table={}, util_table={}, freq_tab
 
 			# Update probability table for each outcome state from previous state and action.
 			for outcome in trans_table.get(previous_state).get(previous_action):
-				if trans_table[previous_state][previous_action][outcome] != 0:
-					prob = trans_table[previous_state][previous_action][outcome] / freq_table[previous_state][previous_action]
-				prob_table.setdefault(previous_state, {}).setdefault(previous_action, {})[current_state] = prob
+				if trans_table[previous_state][previous_action][outcome] > 0:
+					# Float?
+					prob = float(trans_table[previous_state][previous_action][outcome]) / float(freq_table[previous_state][previous_action])
+				prob_table.setdefault(previous_state, {}).setdefault(previous_action, {})[outcome] = prob
 
-		# Policy evaluation.
-		actions = env.getActions(current_state)
-		reward_estimate = -9999
-		for state in util_table:
-			for action in actions:
-				reward = sum([prob * util_table[next_state] for (next_state, prob) in prob_table.setdefault(state, {}).
-					setdefault(action, {}).iteritems() if prob is not None])
-				if reward > reward_estimate:
-					reward_estimate = reward
-			util_table[state] = reward_table[state] + _alpha(freq_table.setdefault(state, {}).setdefault(policy.get(state[0]), 0)) * reward_estimate
-
-		env.print_state(current_state)
-		print "----------"
-		print "----------"
-		print "----------"
+		util_table_new = {}
+		# for state in util_table:
+		util_table_new[current_state] = reward_table[current_state] + _alpha(freq_table.setdefault(current_state, {}).
+			setdefault(policy.get(current_state[0]), 0)) * sum([prob * util_table[next_state] for (next_state, prob) in prob_table.setdefault(current_state, {}).
+					setdefault(policy.get(current_state[0]), {}).iteritems() if prob is not None])
+		util_table = copy.copy(util_table_new)
+		#env.print_state(current_state)
+		#print "----------"
+		#print "----------"
+		#print "----------"
+		if is_terminal:
+			previous_state, previous_action = None, None
+			break
+		else:
+			previous_state, previous_action = current_state, policy.get(current_state[0])
 
 		# Execute the action specified in the policy for the given state.
-		previous_state = current_state
-		previous_action = policy.get(current_state[0])
 		current_state, current_reward, is_terminal = env.do(current_state, policy.get(current_state[0]))
 
 		t, itr = t + tStep, itr + 1
 		if itr >= maxItr:
 			break
-	return itr
+	return util_table
 
 
 def _get_estimates(trans_table, util_table, previous_state, current_actions=None):
@@ -154,14 +154,14 @@ class Agent():
 		@param num_o_trials:
 		"""
 		for trial in range(num_of_trials):
-			alg(
+			self.util_table = alg(
 				env, policy, trans_table=self.trans_table,
 				util_table=self.util_table,
 				freq_table=self.freq_table,
 				reward_table=self.reward_table,
 				prob_table=self.prob_table
 			)
-			#print self.util_table
+			print self.util_table
 		return self.util_table
 
 # Create test agent.
