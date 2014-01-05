@@ -33,6 +33,15 @@ def _getEstimates(transs, utils, currState, currActions=None):
 	utility, current state and actions that can be executed
 	in current state.
 
+	transs keys:
+	currState => actions => newState
+	
+	For every possible action in currState
+		- get frequencies newState|currState,action
+		- count them: n
+		- get probabilities: divide freqs with n
+		- calculate estimate with bellman
+	
 	Return (rewardEstimate, action) pairs in a dict
 	"""
 
@@ -46,7 +55,7 @@ def _getEstimates(transs, utils, currState, currActions=None):
 	return estimates
 
 def adp_random_exploration(env, transs={}, utils={}, freqs={},
-						   t=1, tStep=0.02, alpha=_alpha, maxItr=100000):
+						   t=1, tStep=0.01, alpha=_alpha, maxItr=100000):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -114,7 +123,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		actions = env.getActions(newState)
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
-		# Update utility
+		# Update utility: Bellman
 		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
 
 		state = newState
