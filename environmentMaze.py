@@ -43,7 +43,7 @@ class Maze(Environment):
 
 			# Start position is only our position.
 			# Position is define for dynamic objects, in this case only our agent.
-			self.start_pos = agent_pos
+			self.start_pos = (agent_pos, )
 
 			# Terminal position or positive/negative positions to which the agent is
 			# moved and gets positive/negative reward.
@@ -111,7 +111,7 @@ class Maze(Environment):
 		self.stone_pos_set = sorted(self.stone_pos_set)
 		self.end_plus_pos_set = sorted(self.end_plus_pos_set)
 		self.end_minus_pos_set = sorted(self.end_minus_pos_set)
-		self.start_pos = tuple(agent_pos)
+		self.start_pos = (tuple(agent_pos), )
 
 	def print_state(self, state):
 		"""
@@ -120,7 +120,7 @@ class Maze(Environment):
 		@param state:
 		@return:
 		"""
-		agent_pos = state
+		agent_pos = state[0]
 
 		# Over rows.
 		for i in range(self.size[0]):
@@ -162,11 +162,15 @@ class Maze(Environment):
 		# Select appropriate action given notation.
 		if action in self.possible_actions_dict:
 			action = self.possible_actions_dict[action]
-
 		agent_pos = state[0]
 
 		# Get new position with respect to action. We have already checked whether this action is possible.
 		new_pos = self._add(agent_pos, action)
+
+		# Are we in stone?
+		if new_pos in self.stone_pos_set:
+			new_pos = agent_pos
+
 		reward = -0.04  # For evey additional move the agent gets negative points.
 		is_terminal_state = False
 
@@ -189,7 +193,7 @@ class Maze(Environment):
 			self.steps = 0
 
 		# First position is new position of a player.
-		return new_pos, reward, is_terminal_state
+		return (new_pos, ), reward, is_terminal_state
 
 	def _add(self, absolute, relative):
 		"""
@@ -203,7 +207,6 @@ class Maze(Environment):
 		@param relative:
 		@return:
 		"""
-		new_pos = None
 		rand = random.random()
 
 		if rand > 0.2:
@@ -220,8 +223,6 @@ class Maze(Environment):
 					new_pos = absolute[0] + 1, absolute[1]
 				else:
 					new_pos = absolute[0] - 1, absolute[1]
-
-		# Are we in stone?
 		if new_pos in self.stone_pos_set:
 			new_pos = absolute[0], absolute[1]
 		return new_pos
@@ -237,10 +238,11 @@ class Maze(Environment):
 		actions = []
 
 		for action in self.possible_actions:
-			new_pos = self.add(agent_pos, action)
+			# We should not use _add here as it uses probabilities that that action will be executed!
+			new_pos = agent_pos[0] + action[0], agent_pos[1] + action[1]
 
 			# Check for wall.
-			if new_pos not in self.stone_pos_set:
+			if new_pos in self.stone_pos_set:
 				continue
 
 			# Everything is OK!

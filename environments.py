@@ -164,10 +164,12 @@ class Sokoban(Environment):
 		if boxInEndPosCount == len(self.endPosSet):
 			reward = 1000
 			isTerminalState = True
-
 		if self.steps > self.steps_limit:
 			reward = -1000
 			isTerminalState = True
+
+		if isTerminalState:
+			self.steps = 0
 		# First position is new position of a player.
 		return ((newPos, ) + tuple(sorted(boxList)),
 				reward,
@@ -288,7 +290,7 @@ simple4 = Sokoban([
 	"######",
 	"#A   #",
 	"# B  #",
-	"#    # ",
-	"#*  ##",
+	"#*   #",
+	"#    #",
 	"######"
 ])
