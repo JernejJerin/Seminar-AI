@@ -1,3 +1,5 @@
+from itertools import groupby
+
 class Environment():
 	def __init__(self):
 		raise NotImplementedError("__init__")
@@ -96,12 +98,12 @@ class Sokoban(Environment):
 		# Print columns before last row.
 		print "|" + "".join("-" for i in range(self.size[0])) + "|"
 
-		# Over columns.
-		for j in range(self.size[0]):
+		# Over rows.
+		for j in range(self.size[1]):
 			line = "|"
 
-			# Over rows.
-			for i in range(self.size[1]):
+			# Over columns.
+			for i in range(self.size[0]):
 				# Change column and row order.
 				pt = (i, self.size[1] - 1 - j)
 				if pt == agentPos:
@@ -118,6 +120,57 @@ class Sokoban(Environment):
 
 		# Print columns after last row.
 		print "|" + "".join("-" for i in range(self.size[0])) + "|"
+
+	def printPolicy(self, policy):
+		"""
+		Print policy for all positions relative to box position.
+
+		@param policy:
+		@return:
+		"""
+		pol_dir = {(1, 0): '>', (0, 1): '^', (-1, 0): '<', (0, -1): 'v', None: ' '}
+		keyfunc = lambda x: x[0][1:] # [0] -> key; [1:] -> only box positions
+
+		policy = sorted(policy.items(), key=keyfunc)
+
+		# group policy by box positions
+		for key, subiterator in groupby(policy, keyfunc):
+			print("Policy for box positions : " + str(key))
+			policy = {}
+
+			# Add only position of agent.
+			for subkey, subvalue in subiterator:
+				policy[subkey[:1][0]] = subvalue
+
+			# Print columns before last row.
+			print "|" + "".join("-" for i in range(self.size[0])) + "|"
+
+			# Over rows.
+			for j in range(self.size[1]):
+				line = "|"
+
+				# Over columns.
+				for i in range(self.size[0]):
+					# Change column and row order.
+					pt = (i, self.size[1] - 1 - j)
+					if pt in key:
+						line += "B"
+					elif pt in self.endPosSet:
+						line += "*"
+					elif pt in self.stonePosSet:
+						line += "#"
+					elif pt in policy:
+						line += pol_dir.get(policy.get(pt))
+					else:
+						line += " "
+				print line + "|"
+
+			# Print columns after last row.
+			print "|" + "".join("-" for i in range(self.size[0])) + "|"
+
+			print "----------"
+			print "----------"
+			print "----------"
 
 
 	def getStartingState(self):
@@ -145,27 +198,30 @@ class Sokoban(Environment):
 					newBoxPos = self._add(boxPos, action)
 
 					# Reward for moving a box.
-					reward = 10
+					reward = 0.1
 					if newBoxPos in self.endPosSet:
 						# If new position is in end position then we give greater reward.
-						reward = 30
+						reward = 0.5
 					boxList.append(newBoxPos)
 				else:
 					boxList.append(boxPos)
 		else:
 			boxList = tuple(boxPosSet)
 
-		# Finding deadlocks. We will first try without this.
-		# _deadlock_detection(newBoxPos, boxList)
+		# Finding deadlocks.
+		deadlock = self._deadlock_detection(newBoxPos, boxList)
 
+		if deadlock:
+			reward = -100
+			isTerminalState = True
 		boxInEndPosCount = sum(box in self.endPosSet for box in boxList)
 
 		# check if we are finished
 		if boxInEndPosCount == len(self.endPosSet):
-			reward = 1000
+			reward = 100
 			isTerminalState = True
 		if self.steps > self.steps_limit:
-			reward = -1000
+			reward = -100
 			isTerminalState = True
 
 		if isTerminalState:
@@ -208,7 +264,7 @@ class Sokoban(Environment):
 
 	def _deadlock_detection(self, newBoxPos, boxList):
 		"""
-		Detecting deadlock positions in sokoban. Currently not used!
+		Detecting deadlock positions in sokoban.
 		"""
 		# IN THIS SECTION WE SHOULD FIRST TRY TO FIND DEADLOCKS!
 		# There are three papers:
@@ -218,14 +274,15 @@ class Sokoban(Environment):
 		# I am inclining towards last (master thesis), where on page 44 there is a description
 		# of simple deadlock detection in O(1) time.
 
+		deadlock = False
 		# Check for situations where box cannot be moved any more to any of the possible end positions.
 		# First we start with corner position.
 		if newBoxPos is not None and newBoxPos not in self.endPosSet and self._in_corner(newBoxPos):
-			reward = -1000
-			isTerminalState = True
+			deadlock = True
 
 		# How many boxes are in end position and on edge of environment?
 		boxOnEdgeCount = sum(self._on_edge(loc) for loc in boxList)
+
 		# Check if the number of boxes on edges
 		# exceeds number of ends on edge
 		if boxOnEdgeCount > sum(self._on_edge(loc) for loc in self.endPosSet):
@@ -236,8 +293,8 @@ class Sokoban(Environment):
 			# And this of course only applies if you are not at the corner. Then you are stuck.
 			# TODO: But we should check for every edge (four edges) if the number of
 			# TODO: end positions for each edge does not exceed the number of boxes in each edge.
-			reward = -1000
-			isTerminalState = True
+			deadlock = True
+		return deadlock
 
 	def getActions(self, state):
 		agentPos = state[0]
@@ -280,17 +337,23 @@ simple2 = Sokoban((10, 10),
 				  stonePosList=[(2, 2)])
 
 # Check for corner detection.
-simple3 = Sokoban((5, 5),
+simple3 = Sokoban((4, 5),
 				  agentPos=(0,0),
-				  boxPosList=[(3,3)],
-				  endPosList=[(4,1)],
+				  boxPosList=[(1,3)],
+				  endPosList=[(3,1)],
 				  stonePosList=[(2, 2), (2, 3), (3, 2)])
 
 simple4 = Sokoban([
-	"######",
-	"#A   #",
-	"# B  #",
-	"#*   #",
-	"#    #",
-	"######"
+	"  *",
+	" B ",
+	"A  "
 ])
+
+policy4 = {((0, 0), (1, 1)): (1, 0),
+		   ((1, 0), (1, 1)): (0, 1),
+		   ((1, 1), (1, 2)): (-1, 0),
+		   ((0, 1), (1, 2)): (0, 1),
+		   ((0, 2), (1, 2)): (1, 0)}
+
+simple4.printState(simple4.getStartingState())
+simple4.printPolicy(policy4)
