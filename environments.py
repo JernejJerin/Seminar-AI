@@ -19,8 +19,7 @@ class Sokoban(Environment):
 				 agentPos=(0, 0),
 				 boxPosList=[],
 				 endPosList=[],
-				 stonePosList=[],
-				 steps_limit=1000):
+				 stonePosList=[]):
 
 		if (type(size_or_image) in [str, unicode]):
 			# If contains image of environment.
@@ -57,10 +56,6 @@ class Sokoban(Environment):
 
 		# define environment corners for terminal state detection
 		self.envCorners = {(0, 0, ), (0, n, ), (m, 0, ), (m, n, )}
-
-		# Number of steps or actions executed and the limit.
-		self.steps = 0
-		self.steps_limit = steps_limit
 
 	def _init_from_image(self, image):
 		boxPosList = [] # TODO: sort?
@@ -177,7 +172,6 @@ class Sokoban(Environment):
 		return self.startPos
 
 	def do(self, state, action):
-		self.steps += 1
 		# Select appropriate action given notation.
 		if action in self.possibleActionsDict:
 			action = self.possibleActionsDict[action]
@@ -186,7 +180,7 @@ class Sokoban(Environment):
 		boxPosSet = set(state[1:]) # set optimizes search
 		newPos = self._add(agentPos, action) # get new position with respect to action. We have already checked whether this action is possible.
 		boxList = [] # new box positions
-		reward = -10 # agent reward. For evey additional move the agent gets negative points.
+		reward = -5 # agent reward. For evey additional move the agent gets negative points.
 		isTerminalState = False
 		newBoxPos = None
 
@@ -198,10 +192,10 @@ class Sokoban(Environment):
 					newBoxPos = self._add(boxPos, action)
 
 					# Reward for moving a box.
-					reward = 0.1
+					reward = 5
 					if newBoxPos in self.endPosSet:
 						# If new position is in end position then we give greater reward.
-						reward = 0.5
+						reward = 10
 					boxList.append(newBoxPos)
 				else:
 					boxList.append(boxPos)
@@ -220,12 +214,7 @@ class Sokoban(Environment):
 		if boxInEndPosCount == len(self.endPosSet):
 			reward = 100
 			isTerminalState = True
-		if self.steps > self.steps_limit:
-			reward = -100
-			isTerminalState = True
 
-		if isTerminalState:
-			self.steps = 0
 		# First position is new position of a player.
 		return ((newPos, ) + tuple(sorted(boxList)),
 				reward,
@@ -349,11 +338,10 @@ simple4 = Sokoban([
 	"A  "
 ])
 
+# test policy
 policy4 = {((0, 0), (1, 1)): (1, 0),
 		   ((1, 0), (1, 1)): (0, 1),
 		   ((1, 1), (1, 2)): (-1, 0),
 		   ((0, 1), (1, 2)): (0, 1),
 		   ((0, 2), (1, 2)): (1, 0)}
 
-simple4.printState(simple4.getStartingState())
-simple4.printPolicy(policy4)

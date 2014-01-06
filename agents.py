@@ -1,5 +1,5 @@
 import random
-
+import environments as env
 
 def _f2p(fList):
 	"""
@@ -55,7 +55,7 @@ def _getEstimates(transs, utils, currState, currActions=None):
 	return estimates
 
 def adp_random_exploration(env, transs={}, utils={}, freqs={},
-						   t=1, tStep=0.01, alpha=_alpha, maxItr=100000):
+						   t=1, tStep=0.005, alpha=_alpha, maxItr=100000):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -107,12 +107,12 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		freqs.setdefault(newState, 0)
 		freqs[newState] += 1
 
-		env.printState(state)
-		print actions, bestAction, isTerminal
-		env.printState(newState)
-		print "----------"
-		print "----------"
-		print "----------"
+		#env.printState(state)
+		#print actions, bestAction, isTerminal
+		#env.printState(newState)
+		#print "----------"
+		#print "----------"
+		#print "----------"
 
 		# update transition table. The first one returns dictionary of actions for specific state and the
 		# second one a dictionary of possible states from specific action (best action).
@@ -134,7 +134,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 
 
 def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
-								 alpha=_alpha, maxItr=100000):
+								 alpha=_alpha, maxItr=20):
 	"""
 	Active ADP learning algorithm which returns the best
 	policy for a given environment env and experience
@@ -152,10 +152,11 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 	isTerminal = False
 	state = env.getStartingState()
 
+	reward = 0
 	actions = env.getActions(state)
 	rewardEstimate, bestAction = None, None
-	if len(utils) > 0: # if this is not the first trial
-		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+	#if len(utils) > 0: # if this is not the first trial
+	#	rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
 	while not isTerminal: # while not terminal
 		t = len(freqs) or 1
@@ -167,28 +168,36 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 		# do the action with the best policy
 		# or do some random exploration
 
-		newState, reward, isTerminal = env.do(state, bestAction)
+		newState, new_reward, isTerminal = env.do(state, bestAction)
+
 		freqs.setdefault(newState, 0)
 		freqs[newState] += 1
 
-		env.printState(state)
-		print actions, bestAction, isTerminal
-		env.printState(newState)
-		print "----------"
-		print "----------"
-		print "----------"
+		#env.printState(state)
+		#print actions, bestAction, isTerminal
+		#env.printState(newState)
+		#print "----------"
+		#print "----------"
+		#print "----------"
 
 		# update transition table
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
 		transs[state][bestAction][newState] += 1
 
-		actions = env.getActions(newState)
+		actions = env.getActions(state)
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
 		# Update utility
 		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
 
+
+		#print utils
+
 		state = newState
+		actions = env.getActions(state)
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+
+		reward = new_reward
 		itr = itr + 1
 		if itr >= maxItr:
 			break
@@ -216,7 +225,7 @@ class Agent():
 			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
 		return policy
 
-	def learn(self, env, alg=adp_random_exploration, numOfTrials=100):
+	def learn(self, env, alg=adp_random_exploration, numOfTrials=10000):
 		"""
 		Learn best policy given the environment, algorithm and number of trials.
 		@param env:
@@ -225,9 +234,11 @@ class Agent():
 		"""
 		itrs = 0
 		for trial in range(numOfTrials):
+			#print "Iteration num " + str(itrs)
 			itrs += alg(env, transs=self.transTable,
 						utils=self.uTable,
 						freqs=self.nTable)
+		print self.uTable
 		return self.getPolicy()
 
 	def solve(self, env, policy):
@@ -247,6 +258,24 @@ class Agent():
 
 			actions.append(act)
 			energy += reward
+
+			if energy < -1000:
+				break
 			# We get a list of actions that were executed and sum of rewards that were given when agent entered certain state.
 		return actions, energy
 
+# lets test it on simple example (3x3 world)
+a = Agent()
+a.learn(env.simple4, alg=adp_random_exploration_state)
+env.simple4.printPolicy(a.getPolicy())
+
+# get solution and print it for this simple example
+solution = a.solve(env.simple4, a.getPolicy())
+print "Solution steps: " + str(solution)
+
+# print solution steps
+state = env.simple4.getStartingState()
+for move in solution[0]:
+	env.simple4.printState(state)
+	state, reward, is_terminal = env.simple4.do(state, move)
+env.simple4.printState(state)
