@@ -54,6 +54,31 @@ def _getEstimates(transs, utils, currState, currActions=None):
 		estimates.append((sum(p * utils.get(s, 0) for s, p in probs.iteritems()), ac, ))
 	return estimates
 
+
+def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=None):
+	"""
+	Gets estimates for optimistic.
+
+	Return (rewardEstimate, action) pairs in a dict
+	"""
+
+	estimates = []
+	for ac in (currActions or transs.get(currState, {})):
+		# We get N_s_a from transition table.
+		freq = transs.get(currState, {}).get(ac, {})
+
+		# Number of states.
+		n = sum(val for val in freq.values())
+		probs = dict((key, float(val) / n) for key, val in freq.iteritems())
+		u = sum(p * utils.get(s, 0) for s, p in probs.iteritems())
+
+		# This if function f from page 842.
+		if n < N_e:
+			estimates.append((R_plus, ac, ))
+		else:
+			estimates.append((u, ac, ))
+	return estimates
+
 def adp_random_exploration(env, transs={}, utils={}, freqs={},
 						   t=1, tStep=0.001, alpha=_alpha, maxItr=20):
 	"""
@@ -133,6 +158,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		state = newState
 		reward = new_reward
 
+		# A GLIE scheme must also eventually become greedy, so that the agent's actions
+		# become optimal with respect to the learned (and hence the true) model. That is
+		# why the parameter t needs to be incremented.
 		t, itr = t + tStep, itr + 1
 		if itr >= maxItr:
 			break
@@ -203,6 +231,80 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 			break
 	return itr
 
+
+def adp_optimistic_rewards(env, transs={}, utils={}, freqs={},
+						   R_plus=2, N_e=5, alpha=_alpha, maxItr=30):
+	"""
+	Active ADP (adaptive dynamic programming)
+
+	@param env: Environment
+	@param transs: A transition table (N_s'_sa) with outcome frequencies given state action pairs, initially zero.
+	@param utils: Utilities table
+	@param freqs: A table of frequencies (N_sa) for state-action pairs, initially zero.
+	@param R_plus: An optimistic estimate of the best possible reward obtainable in any state.
+	@param N_e: Limit of how many number of optimistic reward is given before true utility.
+	@param alpha: Step size function
+	@param maxItr: Maximum iterations
+	"""
+
+	itr = 0
+	isTerminal = False
+	state = env.getStartingState()
+
+	# Start reward should be zero.
+	reward = 0
+
+	# Get possible actions with respect to current state.
+	actions = env.getActions(state)
+	rewardEstimate, bestAction = None, None
+	if len(utils) > 0: # if this is not the first trial
+		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, state, R_plus, N_e, actions))
+
+	while not isTerminal: # while not terminal
+		if bestAction is None:
+			# If it is the first iteration or exploration event
+			# then randomly choose an action. Taking a random action in 1/t instances.
+			bestAction = random.choice(actions)
+
+		# do the action with the best policy
+		# or do some random exploration
+		newState, new_reward, isTerminal = env.do(state, bestAction)
+
+		# Set to zero if newState does not exist yet. For new state?
+		freqs.setdefault(newState, 0)
+		freqs[newState] += 1
+
+		# update transition table. The first one returns dictionary of actions for specific state and the
+		# second one a dictionary of possible states from specific action (best action).
+		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
+		transs[state][bestAction][newState] += 1
+
+		# We need to get actions on current state!
+		actions = env.getActions(state)
+		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, state, R_plus, N_e, actions))
+
+		# Update utility: Bellman equation
+		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
+
+		# Is this part from the book:
+		# Having obtained a utility function U that is optimal for the learned model,
+		# the agent can extract an optimal action by one-step look-ahead to maximize
+		# the expected utility; alternatively, if it uses policy iteration, the
+		# optimal policy is already available, so it should simply execute the
+		# action the optimal policy recommends. Or should it?
+		new_actions = env.getActions(newState)
+		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, newState, R_plus, N_e, new_actions))
+
+		actions = new_actions
+		state = newState
+		reward = new_reward
+
+		itr += 1
+		if itr >= maxItr:
+			break
+	return itr
+
+
 # Agent class.
 class Agent():
 	def __init__(self):
@@ -225,7 +327,7 @@ class Agent():
 			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
 		return policy
 
-	def learn(self, env, alg=adp_random_exploration, numOfTrials=1000):
+	def learn(self, env, alg=adp_random_exploration, numOfTrials=100):
 		"""
 		Learn best policy given the environment, algorithm and number of trials.
 		@param env:
@@ -266,7 +368,7 @@ class Agent():
 
 # lets test it on simple example (3x3 world)
 a = Agent()
-a.learn(env.complex1, alg=adp_random_exploration)
+a.learn(env.complex1, alg=adp_optimistic_rewards)
 env.complex1.printPolicy(a.getPolicy())
 
 # get solution and print it for this simple example
