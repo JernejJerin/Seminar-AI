@@ -106,10 +106,14 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	@param maxItr: Maximum iterations
 	"""
 
-	t = kwargs.get('t', 1)
-	tStep = kwargs.get('tStep', 0.8)
+	
+	tStep = kwargs.get('tStep', 0.01)
 	alpha = kwargs.get('alpha', _alpha)
 	maxItr = kwargs.get('maxItr', 50)
+	tFac = kwargs.get('tFac', 0.7)
+	t = kwargs.get('currItrs', 0)/5 or 1
+	minRnd = kwargs.get('minRnd', 0.0)
+	preferUnknown = kwargs.get('preferUnknown', 0.5)
 	
 	itr = 0
 	isTerminal = False
@@ -125,11 +129,15 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
 	while not isTerminal: # while not terminal
-		if random.random() < 1. / log(t+1) or bestAction is None:
+		unknownActions = [ac for ac in actions if ac not in transs.get(state, {})]
+		
+		if random.random() < max(minRnd, 1. / (tFac*t)) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action. Taking a random action in 1/t instances.
 			bestAction = random.choice(actions)
-
+		elif unknownActions and preferUnknown and random.random() < preferUnknown:
+			bestAction = random.choice(unknownActions)
+		
 		# do the action with the best policy
 		# or do some random exploration
 		newState, new_reward, isTerminal = env.do(state, bestAction)
@@ -171,6 +179,99 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 			break
 	return itr
 
+def adp_random_exploration_unknown(env, transs={}, utils={}, freqs={}, **kwargs):
+	"""
+	Active ADP (adaptive dynamic programming) learning
+	algorithm which returns the best policy for a given
+	environment env and experience dictionary exp
+
+	The experience dictionary exp can be empty if 
+	the agent has no experience with the environment
+	but can also be full with values from
+	previous trials
+
+	The algorithm returns the number of iterations
+	needed to reach a terminal state
+
+	For reference look in page 834.
+
+	@param env: Environment
+	@param transs: A transition table (N_s'_sa) with outcome frequencies given state action pairs, initially zero.
+	@param utils: Utilities table
+	@param freqs: A table of frequencies (N_sa) for state-action pairs, initially zero.
+	@param t: A parameter for choosing best action or random action.
+	@param tStep: A step to increment parameter t.
+	@param alpha: Step size function
+	@param maxItr: Maximum iterations
+	"""
+
+	
+	alpha = kwargs.get('alpha', _alpha)
+	maxItr = kwargs.get('maxItr', 50)
+	tFac = kwargs.get('tFac', 0.7)
+	minRnd = kwargs.get('minRnd', 0.0)
+	preferUnknown = kwargs.get('preferUnknown', 0.5)
+	
+	itr = 0
+	isTerminal = False
+	state = env.getStartingState()
+
+	# Start reward should be zero.
+	reward = 0
+
+	# Get possible actions with respect to current state.
+	actions = env.getActions(state)
+	rewardEstimate, bestAction = None, None
+	if len(utils) > 0: # if this is not the first trial
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+
+	while not isTerminal: # while not terminal
+		unknownActions = [ac for ac in actions if ac not in transs.get(state, {})]
+		
+		if bestAction is None or unknownActions and random.random() < preferUnknown:
+			bestAction = random.choice(unknownActions)
+
+		preferUnknown *= 0.99
+		# do the action with the best policy
+		# or do some random exploration
+		newState, new_reward, isTerminal = env.do(state, bestAction)
+
+		# Set to zero if newState does not exist yet. For new state?
+		freqs.setdefault(newState, 0)
+		freqs[newState] += 1
+
+		# update transition table. The first one returns dictionary of actions for specific state and the
+		# second one a dictionary of possible states from specific action (best action).
+		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
+		transs[state][bestAction][newState] += 1
+
+		# We need to get actions on current state!
+		actions = env.getActions(state)
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+
+		# Update utility: Bellman equation
+		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
+
+		# Is this part from the book:
+		# Having obtained a utility function U that is optimal for the learned model,
+		# the agent can extract an optimal action by one-step look-ahead to maximize
+		# the expected utility; alternatively, if it uses policy iteration, the
+		# optimal policy is already available, so it should simply execute the
+		# action the optimal policy recommends. Or should it?
+		new_actions = env.getActions(newState)
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, newState, new_actions))
+
+		actions = new_actions
+		state = newState
+		reward = new_reward
+
+		# A GLIE scheme must also eventually become greedy, so that the agent's actions
+		# become optimal with respect to the learned (and hence the true) model. That is
+		# why the parameter t needs to be incremented.
+		itr = itr + 1
+		if itr >= maxItr:
+			break
+	return itr
 
 def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
@@ -188,6 +289,8 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
 	alpha = kwargs.get('alpha', _alpha)
 	maxItr = kwargs.get('maxItr', 50)
+	logFac = kwargs.get('logFac', 1.1)
+	minRnd = kwargs.get('minRnd', 0.001)
 	
 	itr = 0
 	isTerminal = False
@@ -202,7 +305,7 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 
 	while not isTerminal: # while not terminal
 		t = float(len(freqs)) or 1.
-		if random.random() < 1. / (t+1) or bestAction is None:
+		if random.random() < 1. / max(minRnd, (logFac*log(t+1))) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action
 			bestAction = random.choice(actions)
