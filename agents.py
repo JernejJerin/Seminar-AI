@@ -327,7 +327,7 @@ class Agent():
 			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
 		return policy
 
-	def learn(self, env, alg=adp_random_exploration, numOfTrials=150):
+	def learn(self, env, alg=adp_random_exploration, numOfTrials=150, maxIter=None):
 		"""
 		Learn best policy given the environment, algorithm and number of trials.
 		@param env:
@@ -335,12 +335,19 @@ class Agent():
 		@param numOfTrials:
 		"""
 		itrs = 0
+		self.clearExperience()
 		for trial in range(numOfTrials):
 			#print "Iteration num " + str(itrs)
-			itrs += alg(env, transs=self.transTable,
-						utils=self.uTable,
-						freqs=self.nTable)
-		print self.uTable
+			if maxIter:
+				itrs += alg(env, maxItr=maxIter,
+							transs=self.transTable,
+							utils=self.uTable,
+							freqs=self.nTable)
+			else:
+				itrs += alg(env,
+							transs=self.transTable,
+							utils=self.uTable,
+							freqs=self.nTable)
 		return self.getPolicy()
 
 	def solve(self, env, policy):

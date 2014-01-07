@@ -21,12 +21,13 @@ class Environment():
 
 
 class Sokoban(Environment):
-	def __init__(self, size_or_image=(5, 5),
+	def __init__(self, name, 
+				 size_or_image=(5, 5),
 				 agentPos=(0, 0),
 				 boxPosList=[],
 				 endPosList=[],
 				 stonePosList=[]):
-
+		self.name = name
 		if (type(size_or_image) in [str, unicode]):
 			# If contains image of environment.
 			self._init_from_image(size_or_image.split("\n"))
@@ -319,26 +320,26 @@ class Sokoban(Environment):
 		return actions
 
 
-simple1 = Sokoban((5,5), 
+simple1 = Sokoban("simple1", (5,5), 
 				  agentPos=(1,1),
 				  boxPosList=[(1,2)],
 				  endPosList=[(2,1)],
 				  stonePosList=[(2, 2)])
 
-simple2 = Sokoban((10, 10), 
+simple2 = Sokoban("simple2", (10, 10), 
 				  agentPos=(1,1),
 				  boxPosList=[(1,2)],
 				  endPosList=[(2,1)],
 				  stonePosList=[(2, 2)])
 
 # Check for corner detection.
-simple3 = Sokoban((4, 5),
+simple3 = Sokoban("simple3", (4, 5),
 				  agentPos=(0,0),
 				  boxPosList=[(1,3)],
 				  endPosList=[(3,1)],
 				  stonePosList=[(2, 2), (2, 3), (3, 2)])
 
-simple4 = Sokoban([
+simple4 = Sokoban("simple4", [
 	"  *",
 	" B ",
 	"A  "
@@ -351,7 +352,7 @@ policy = {((0, 0), (1, 1)): (1, 0),
 		   ((0, 1), (1, 2)): (0, 1),
 		   ((0, 2), (1, 2)): (1, 0)}
 
-boxworld1 = Sokoban([
+boxworld1 = Sokoban("boxworld1", [
 	"  ###   ",
 	"  #*#   ",
 	"  # ####",
@@ -362,7 +363,7 @@ boxworld1 = Sokoban([
 	"   ###"
 ])
 
-boxworld2 = Sokoban([
+boxworld2 = Sokoban("boxworld2", [
 	"#####    ",
 	"#   #    ",
 	"# B # ###",
