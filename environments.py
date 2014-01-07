@@ -1,5 +1,11 @@
 from itertools import groupby
 
+REWARD_DEFAULT = -5
+REWARD_MOVE_BOX = 5
+REWARD_BOX_ON_END = 10
+REWARD_DEADLOCK = -100
+REWARD_SOLVED = 100
+
 class Environment():
 	def __init__(self):
 		raise NotImplementedError("__init__")
@@ -180,7 +186,7 @@ class Sokoban(Environment):
 		boxPosSet = set(state[1:]) # set optimizes search
 		newPos = self._add(agentPos, action) # get new position with respect to action. We have already checked whether this action is possible.
 		boxList = [] # new box positions
-		reward = -5 # agent reward. For evey additional move the agent gets negative points.
+		reward = REWARD_DEFAULT # agent reward. For evey additional move the agent gets negative points.
 		isTerminalState = False
 		newBoxPos = None
 
@@ -192,10 +198,10 @@ class Sokoban(Environment):
 					newBoxPos = self._add(boxPos, action)
 
 					# Reward for moving a box.
-					reward = 5
+					reward = REWARD_MOVE_BOX
 					if newBoxPos in self.endPosSet:
 						# If new position is in end position then we give greater reward.
-						reward = 10
+						reward = REWARD_BOX_ON_END
 					boxList.append(newBoxPos)
 				else:
 					boxList.append(boxPos)
@@ -206,13 +212,13 @@ class Sokoban(Environment):
 		deadlock = self._deadlock_detection(newBoxPos, boxList)
 
 		if deadlock:
-			reward = -100
+			reward = REWARD_DEADLOCK
 			isTerminalState = True
 		boxInEndPosCount = sum(box in self.endPosSet for box in boxList)
 
 		# check if we are finished
 		if boxInEndPosCount == len(self.endPosSet):
-			reward = 100
+			reward = REWARD_SOLVED
 			isTerminalState = True
 
 		# First position is new position of a player.

@@ -80,7 +80,7 @@ def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=N
 	return estimates
 
 def adp_random_exploration(env, transs={}, utils={}, freqs={},
-						   t=1, tStep=0.001, alpha=_alpha, maxItr=20):
+						   t=1, tStep=0.005, alpha=_alpha, maxItr=50):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -168,7 +168,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 
 
 def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
-								 alpha=_alpha, maxItr=10):
+								 alpha=_alpha, maxItr=50):
 	"""
 	Active ADP learning algorithm which returns the best
 	policy for a given environment env and experience
