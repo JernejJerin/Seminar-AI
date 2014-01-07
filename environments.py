@@ -1,10 +1,10 @@
 from itertools import groupby
 
-REWARD_DEFAULT = -5
+REWARD_DEFAULT = -1
 REWARD_MOVE_BOX = 5
 REWARD_BOX_ON_END = 10
-REWARD_DEADLOCK = -100
-REWARD_SOLVED = 100
+REWARD_DEADLOCK = -200
+REWARD_SOLVED = 200
 
 class Environment():
 	def __init__(self):
@@ -343,6 +343,14 @@ simple4 = Sokoban("simple4", [
 	"  *",
 	" B ",
 	"A  "
+])
+
+simple5 = Sokoban("simple5", [
+	"#####",
+	"#  *#",
+	"# B #",
+	"#   #",
+	"#A###",
 ])
 
 # test policy

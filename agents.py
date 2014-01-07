@@ -1,5 +1,6 @@
 import random
 import environments as env
+from math import log
 
 def _f2p(fList):
 	"""
@@ -24,7 +25,7 @@ def _alpha(n):
 	utility of policy pi for state s will converge to
 	correct value.
 	"""
-	return 60. / (59 + n)
+	return 50. / (49 + n)
 
 
 def _getEstimates(transs, utils, currState, currActions=None):
@@ -79,8 +80,7 @@ def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=N
 			estimates.append((u, ac, ))
 	return estimates
 
-def adp_random_exploration(env, transs={}, utils={}, freqs={},
-						   t=1, tStep=0.005, alpha=_alpha, maxItr=50):
+def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -106,6 +106,11 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 	@param maxItr: Maximum iterations
 	"""
 
+	t = kwargs.get('t', 1)
+	tStep = kwargs.get('tStep', 0.8)
+	alpha = kwargs.get('alpha', _alpha)
+	maxItr = kwargs.get('maxItr', 50)
+	
 	itr = 0
 	isTerminal = False
 	state = env.getStartingState()
@@ -120,7 +125,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
 	while not isTerminal: # while not terminal
-		if random.random() < 1. / t or bestAction is None:
+		if random.random() < 1. / log(t+1) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action. Taking a random action in 1/t instances.
 			bestAction = random.choice(actions)
@@ -167,8 +172,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={},
 	return itr
 
 
-def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
-								 alpha=_alpha, maxItr=50):
+def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
 	Active ADP learning algorithm which returns the best
 	policy for a given environment env and experience
@@ -182,6 +186,9 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 	The algorithm returns the number of iterations
 	needed to reach a terminal state
 	"""
+	alpha = kwargs.get('alpha', _alpha)
+	maxItr = kwargs.get('maxItr', 50)
+	
 	itr = 0
 	isTerminal = False
 	state = env.getStartingState()
@@ -194,8 +201,8 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 	#	rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
 	while not isTerminal: # while not terminal
-		t = len(freqs) or 1
-		if random.random() < 1. / t or bestAction is None:
+		t = float(len(freqs)) or 1.
+		if random.random() < 1. / (t+1) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action
 			bestAction = random.choice(actions)
@@ -215,7 +222,7 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 
 		actions = env.getActions(state)
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
-
+		
 		# Update utility
 		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
 
@@ -232,8 +239,7 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 	return itr
 
 
-def adp_optimistic_rewards(env, transs={}, utils={}, freqs={},
-						   R_plus=5, N_e=12, alpha=_alpha, maxItr=10):
+def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
 	Active ADP (adaptive dynamic programming)
 
@@ -246,6 +252,10 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={},
 	@param alpha: Step size function
 	@param maxItr: Maximum iterations
 	"""
+	R_plus = kwargs.get('R_plus', 5)
+	N_e = kwargs.get('N_e', 12)
+	alpha = kwargs.get('alpha', _alpha)
+	maxItr = kwargs.get('maxItr', 10)
 
 	itr = 0
 	isTerminal = False
@@ -320,6 +330,9 @@ class Agent():
 		# Utilities table.
 		self.uTable = {}
 
+		# Results
+		self.results = []
+
 	def getPolicy(self):
 		policy = {}
 		# For every state set appropriate action.
@@ -327,27 +340,25 @@ class Agent():
 			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
 		return policy
 
-	def learn(self, env, alg=adp_random_exploration, numOfTrials=150, maxIter=None):
+	def learn(self, env, alg=adp_random_exploration, numOfTrials=150, **kwargs):
 		"""
 		Learn best policy given the environment, algorithm and number of trials.
 		@param env:
 		@param alg:
 		@param numOfTrials:
 		"""
+		
+		
 		itrs = 0
 		self.clearExperience()
 		for trial in range(numOfTrials):
-			#print "Iteration num " + str(itrs)
-			if maxIter:
-				itrs += alg(env, maxItr=maxIter,
-							transs=self.transTable,
-							utils=self.uTable,
-							freqs=self.nTable)
-			else:
-				itrs += alg(env,
-							transs=self.transTable,
-							utils=self.uTable,
-							freqs=self.nTable)
+			itrs += alg(env,
+						transs=self.transTable,
+						utils=self.uTable,
+						freqs=self.nTable,
+						currItrs=itrs,
+						results=self.results,
+						**kwargs)
 		return self.getPolicy()
 
 	def solve(self, env, policy):
@@ -374,6 +385,7 @@ class Agent():
 		return actions, energy
 
 # lets test it on boxworld2
+"""
 a = Agent()
 a.learn(env.boxworld1, alg=adp_optimistic_rewards)
 env.boxworld1.printPolicy(a.getPolicy())
@@ -388,3 +400,4 @@ for move in solution[0]:
 	env.boxworld1.printState(state)
 	state, reward, is_terminal = env.boxworld1.do(state, move)
 env.boxworld1.printState(state)
+"""
