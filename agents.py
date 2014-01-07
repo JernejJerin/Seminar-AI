@@ -233,7 +233,7 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={},
 
 
 def adp_optimistic_rewards(env, transs={}, utils={}, freqs={},
-						   R_plus=2, N_e=5, alpha=_alpha, maxItr=30):
+						   R_plus=5, N_e=12, alpha=_alpha, maxItr=10):
 	"""
 	Active ADP (adaptive dynamic programming)
 
@@ -327,7 +327,7 @@ class Agent():
 			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
 		return policy
 
-	def learn(self, env, alg=adp_random_exploration, numOfTrials=100):
+	def learn(self, env, alg=adp_random_exploration, numOfTrials=150):
 		"""
 		Learn best policy given the environment, algorithm and number of trials.
 		@param env:
@@ -366,18 +366,18 @@ class Agent():
 			# We get a list of actions that were executed and sum of rewards that were given when agent entered certain state.
 		return actions, energy
 
-# lets test it on simple example (3x3 world)
+# lets test it on boxworld2
 a = Agent()
-a.learn(env.complex1, alg=adp_optimistic_rewards)
-env.complex1.printPolicy(a.getPolicy())
+a.learn(env.boxworld1, alg=adp_optimistic_rewards)
+env.boxworld1.printPolicy(a.getPolicy())
 
 # get solution and print it for this simple example
-solution = a.solve(env.complex1, a.getPolicy())
+solution = a.solve(env.boxworld1, a.getPolicy())
 print "Solution steps: " + str(solution)
 
 # print solution steps
-state = env.complex1.getStartingState()
+state = env.boxworld1.getStartingState()
 for move in solution[0]:
-	env.complex1.printState(state)
-	state, reward, is_terminal = env.complex1.do(state, move)
-env.complex1.printState(state)
+	env.boxworld1.printState(state)
+	state, reward, is_terminal = env.boxworld1.do(state, move)
+env.boxworld1.printState(state)
