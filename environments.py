@@ -1,8 +1,8 @@
 from itertools import groupby
 
 REWARD_DEFAULT = -1
-REWARD_MOVE_BOX = 5
-REWARD_BOX_ON_END = 10
+REWARD_MOVE_BOX = 10
+REWARD_BOX_ON_END = 15
 REWARD_DEADLOCK = -200
 REWARD_SOLVED = 200
 
@@ -339,7 +339,7 @@ simple3 = Sokoban("simple3", (4, 5),
 				  endPosList=[(3,1)],
 				  stonePosList=[(2, 2), (2, 3), (3, 2)])
 
-simple4 = Sokoban("simple4", [
+simple4 = Sokoban("simple4", [ # candidate
 	"  *",
 	" B ",
 	"A  "
@@ -360,7 +360,7 @@ policy = {((0, 0), (1, 1)): (1, 0),
 		   ((0, 1), (1, 2)): (0, 1),
 		   ((0, 2), (1, 2)): (1, 0)}
 
-boxworld1 = Sokoban("boxworld1", [
+boxworld1 = Sokoban("boxworld1", [ # candidate
 	"  ###   ",
 	"  #*#   ",
 	"  # ####",
@@ -383,3 +383,27 @@ boxworld2 = Sokoban("boxworld2", [
 	" #####   "
 ])
 
+CELJE = Sokoban("Celje", [
+	"  *",
+	" B ",
+	"A  ",
+])
+
+MARIBOR = Sokoban("MARIBOR", [
+	"  ###   ",
+	"  #*#   ",
+	"  # ####",
+	"###B B*#",
+	"#* BA###",
+	"####B#",
+	"   #*#",
+	"   ###"
+])
+
+LJUBLJANA = Sokoban("Ljubljana", [
+	"###*  ######",
+	"##    B     "
+	"#     B     ",
+	"*     A     ",
+	"### ## ### #",
+])

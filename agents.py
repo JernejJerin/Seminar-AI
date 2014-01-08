@@ -110,10 +110,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	tStep = kwargs.get('tStep', 0.01)
 	alpha = kwargs.get('alpha', _alpha)
 	maxItr = kwargs.get('maxItr', 50)
-	tFac = kwargs.get('tFac', 0.7)
-	t = kwargs.get('currItrs', 0)/5 or 1
+	tFac = kwargs.get('tFac', 1.)
+	t = kwargs.get('currItrs', 0)/5 if kwargs.get('remember', False) else 0
 	minRnd = kwargs.get('minRnd', 0.0)
-	preferUnknown = kwargs.get('preferUnknown', 0.5)
 	
 	itr = 0
 	isTerminal = False
@@ -131,12 +130,10 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	while not isTerminal: # while not terminal
 		unknownActions = [ac for ac in actions if ac not in transs.get(state, {})]
 		
-		if random.random() < max(minRnd, 1. / (tFac*t)) or bestAction is None:
+		if random.random() < max(minRnd, 1. / (tFac*(t+1))) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action. Taking a random action in 1/t instances.
 			bestAction = random.choice(actions)
-		elif unknownActions and preferUnknown and random.random() < preferUnknown:
-			bestAction = random.choice(unknownActions)
 		
 		# do the action with the best policy
 		# or do some random exploration
@@ -146,6 +143,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 		freqs.setdefault(newState, 0)
 		freqs[newState] += 1
 
+		#env.printState(newState)
+		
 		# update transition table. The first one returns dictionary of actions for specific state and the
 		# second one a dictionary of possible states from specific action (best action).
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
