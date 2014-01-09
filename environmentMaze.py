@@ -1,5 +1,6 @@
 __author__ = 'Ziga Stopinsek & Jernej Jerin'
 import random
+from itertools import groupby
 
 class Environment():
 	def __init__(self):
@@ -21,8 +22,7 @@ class Maze(Environment):
 		agent_pos=(0, 0),
 		end_plus_pos_list=[],
 		end_minus_pos_list=[],
-		stone_pos_list=[],
-		steps_limit=1000
+		stone_pos_list=[]
 	):
 		"""
 		Initialization of simple maze environment.
@@ -32,7 +32,6 @@ class Maze(Environment):
 		@param end_plus_pos_list:
 		@param end_minus_pos_list:
 		@param stone_pos_list:
-		@param steps_limit:
 		"""
 		if type(size_or_image) in [str, unicode]:
 			# If contains image of environment.
@@ -65,10 +64,6 @@ class Maze(Environment):
 			"left": self.possible_actions[2],
 			"right": self.possible_actions[3],
 		}
-
-		# Number of steps or actions executed and the limit.
-		self.steps = 0
-		self.steps_limit = steps_limit
 
 	def _init_from_image(self, image):
 		"""
@@ -141,6 +136,44 @@ class Maze(Environment):
 					line += " "
 			print line
 
+
+	def print_policy(self, policy):
+		"""
+		Print policy.
+
+		@param policy:
+		@return:
+		"""
+
+		pol_dir = {(1, 0): '^', (0, 1): '>', (-1, 0): 'v', (0, -1): '<', None: ' '}
+
+		# Over rows.
+		for i in range(self.size[0]):
+			line = "|"
+
+			# Over columns.
+			for j in range(self.size[1]):
+				# Change column and row order.
+				pt = (self.size[0] - i - 1, j)
+				if pt in self.end_plus_pos_set:
+					line += "+"
+				elif pt in self.end_minus_pos_set:
+					line += "-"
+				elif pt in self.stone_pos_set:
+					line += "#"
+				elif (pt,) in policy:
+					line += pol_dir.get(policy.get((pt,)))
+				else:
+					line += " "
+			print line + "|"
+
+		# Print columns after last row.
+		print "|" + "".join("-" for i in range(self.size[0])) + "|"
+
+		print "----------"
+		print "----------"
+		print "----------"
+
 	def getStartingState(self):
 		"""
 		Get start position of environment.
@@ -157,7 +190,6 @@ class Maze(Environment):
 		@param action:
 		@return:
 		"""
-		self.steps += 1
 
 		# Select appropriate action given notation.
 		if action in self.possible_actions_dict:
@@ -183,14 +215,6 @@ class Maze(Environment):
 		elif new_pos in self.end_minus_pos_set:
 			reward = -1
 			is_terminal_state = True
-
-		# Are we over the limit step?
-		if self.steps > self.steps_limit:
-			reward = -1000
-			is_terminal_state = True
-
-		if is_terminal_state:
-			self.steps = 0
 
 		# First position is new position of a player.
 		return (new_pos, ), reward, is_terminal_state

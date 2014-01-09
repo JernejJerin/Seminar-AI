@@ -3,9 +3,23 @@ import agents as a
 import operator
 
 ALGORITHMS = (
-#	(a.adp_optimistic_rewards, {
-#		
-#	}),
+	(a.adp_optimistic_rewards, {
+		e.CELJE.name: {
+			'maxItr': 12,
+			'R_plus': 7,
+			'N_e': 4,
+		},
+		e.MARIBOR.name: {
+			'maxItr': 20,
+			'R_plus': 2,
+			'N_e': 5,
+		},
+		e.LJUBLJANA.name: {
+			'maxItr': 20,
+			'R_plus': 2,
+			'N_e': 5,
+		}
+	}),
 	(a.adp_random_exploration, {
 		e.CELJE.name: {
 			'maxItr': 20,
@@ -55,9 +69,9 @@ ALGORITHMS = (
 )
 
 STOP_AFTER_ONE = True
-MAX_TESTS = 10
+MAX_TESTS = 100
 
-NUM_OF_TRIALS = 2000
+NUM_OF_TRIALS = 150
 
 ENVIRONMENTS = (
 	e.CELJE,

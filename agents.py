@@ -486,20 +486,20 @@ class Agent():
 			# We get a list of actions that were executed and sum of rewards that were given when agent entered certain state.
 		return actions, energy
 
-# lets test it on boxworld2
-"""
+# lets test it on simple4
 a = Agent()
-a.learn(env.boxworld1, alg=adp_optimistic_rewards)
-env.boxworld1.printPolicy(a.getPolicy())
+a.learn(env.simple4, alg=adp_optimistic_rewards, numOfTrials=15000, **{'maxItr': 15,
+			'R_plus': 7,
+			'N_e': 5,})
+env.simple4.printPolicy(a.getPolicy())
 
 # get solution and print it for this simple example
-solution = a.solve(env.boxworld1, a.getPolicy())
+solution = a.solve(env.simple4, a.getPolicy())
 print "Solution steps: " + str(solution)
 
 # print solution steps
-state = env.boxworld1.getStartingState()
+state = env.simple4.getStartingState()
 for move in solution[0]:
-	env.boxworld1.printState(state)
-	state, reward, is_terminal = env.boxworld1.do(state, move)
-env.boxworld1.printState(state)
-"""
+	env.simple4.printState(state)
+	state, reward, is_terminal = env.simple4.do(state, move)
+env.simple4.printState(state)
