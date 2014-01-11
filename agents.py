@@ -186,7 +186,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 
 		actions = env.getActions(newState)
 		for ac in actions:
-			transs[state].setdefault(ac, {})
+			transs.setdefault(newState, {}).setdefault(ac, {})
 		_policy_iteration(transs, utils, policy, rewards)
 		
 		bestAction = policy.get(newState, random.choice(actions))
