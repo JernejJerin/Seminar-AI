@@ -184,7 +184,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policyTable={}, *
 		# optimal policy is already available, so it should simply execute the
 		# action the optimal policy recommends. Or should it?
 		new_actions = env.getActions(newState)
-		# rewardEstimate, bestAction = max(_getEstimates(transs, utils, newState, new_actions))
+		rewardEstimate, bestAction = max(_getEstimates(transs, utils, newState, new_actions))
 
 
 		actions = new_actions
