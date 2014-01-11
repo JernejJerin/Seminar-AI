@@ -80,7 +80,7 @@ def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=N
 			estimates.append((u, ac, ))
 	return estimates
 
-def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
+def adp_random_exploration(env, transs={}, utils={}, freqs={}, policyTable={}, **kwargs):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -106,7 +106,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	@param maxItr: Maximum iterations
 	"""
 
-	
+	# Algorithm parameters.
 	tStep = kwargs.get('tStep', 0.01)
 	alpha = kwargs.get('alpha', _alpha)
 	maxItr = kwargs.get('maxItr', 50)
@@ -116,17 +116,17 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 	
 	itr = 0
 	isTerminal = False
-	state = env.getStartingState()
 
-	# Start reward should be zero.
+	# Getting starting state and setting starting reward.
+	state = env.getStartingState()
 	reward = 0
 
 	# Get possible actions with respect to current state.
 	actions = env.getActions(state)
-	freqs.setdefault(state, 0)
-	freqs[state] += 1
+	freqs.setdefault(state, 1)
 	utils[state] = 0
 	rewardEstimate, bestAction = None, None
+
 	if len(utils) > 0: # if this is not the first trial
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
@@ -136,18 +136,17 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 		if random.random() < max(minRnd, 1. / (tFac*(t+1))) or bestAction is None:
 			# If it is the first iteration or exploration event
 			# then randomly choose an action. Taking a random action in 1/t instances.
-			bestAction = random.choice(actions)
+			#bestAction = random.choice(actions)
+			bestAction = policyTable.setdefault(state, random.choice(actions))
 		
 		# do the action with the best policy
 		# or do some random exploration
 		newState, new_reward, isTerminal = env.do(state, bestAction)
 
-		# Set to zero if newState does not exist yet. For new state?
+		# Set if values for new state do not exist yet.
 		freqs.setdefault(newState, 0)
 		utils.setdefault(newState, 0)
 		freqs[newState] += 1
-
-		#env.printState(newState)
 		
 		# update transition table. The first one returns dictionary of actions for specific state and the
 		# second one a dictionary of possible states from specific action (best action).
@@ -160,7 +159,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 			# Policy evaluation.
 			for s in utils:
 				a = env.getActions(s)
-				rewardEstimate, bestAction = max(_getEstimates(transs, utils, s, a))
+				# Compute utility of each state given policy pi. If it does not exist select random.
+				rewardEstimate, bestAction = max(_getEstimates(transs, utils, s, policyTable.setdefault(s, random.choice(a))))
 				utils[s] = reward + _alpha(freqs.get(s, 0)) * rewardEstimate
 
 			unchanged = False
@@ -168,9 +168,13 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 			# Policy improvement.
 			for s in utils:
 				a = env.getActions(s)
-				rewardEstimate2, bestAction2 = max(_getEstimates(transs, utils, s, a))
-				rewardBest = sum([pair[0] for pair in _getEstimates(transs, utils, s, bestAction2)])
-				if rewardEstimate2 > rewardBest:
+
+				# Get best possible estimate.
+				rewardEstimate, bestAction = max(_getEstimates(transs, utils, s, a))
+				rewardBest = sum([pair[0] for pair in _getEstimates(transs, utils, s, policyTable.get(s))])
+
+				if rewardEstimate > rewardBest:
+					policyTable[s] = bestAction
 					unchanged = True
 
 		# Is this part from the book:
@@ -180,7 +184,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 		# optimal policy is already available, so it should simply execute the
 		# action the optimal policy recommends. Or should it?
 		new_actions = env.getActions(newState)
-		rewardEstimate, bestAction = max(_getEstimates(transs, utils, newState, new_actions))
+		# rewardEstimate, bestAction = max(_getEstimates(transs, utils, newState, new_actions))
+
 
 		actions = new_actions
 		state = newState
@@ -448,6 +453,9 @@ class Agent():
 		# Utilities table.
 		self.uTable = {}
 
+		# Optimal policy table.
+		self.policyTable = {}
+
 		# Results
 		self.results = []
 
@@ -473,6 +481,7 @@ class Agent():
 						transs=self.transTable,
 						utils=self.uTable,
 						freqs=self.nTable,
+						policyTable = self.policyTable,
 						currItrs=itrs,
 						results=self.results,
 						**kwargs)
@@ -510,6 +519,8 @@ a.learn(env.example_book, alg=adp_random_exploration, numOfTrials=500, **{'maxIt
 print a.getPolicy()
 env.example_book.print_policy(a.getPolicy())
 print a.uTable
+env.example_book.print_policy(a.policyTable)
+print a.policyTable
 
 # get solution and print it for this simple example
 """
