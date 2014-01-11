@@ -38,20 +38,6 @@ ALGORITHMS = (
 			'remember': True,
 		}
 	}),
-	(a.adp_random_exploration_unknown, {
-		e.CELJE.name: {
-			'maxItr': 20,
-			'preferUnknown': 0.8,
-		},
-		e.MARIBOR.name: {
-			'maxItr': 20,
-			'preferUnknown': 0.8,
-		},
-		e.LJUBLJANA.name: {
-			'maxItr': 20,
-			'preferUnknown': 0.8,
-		}	
-	}),
 	(a.adp_random_exploration_state, {
 		e.CELJE.name: {
 			'maxItr': 20,
