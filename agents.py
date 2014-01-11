@@ -39,6 +39,9 @@ def _policy_iteration(transs, utils, policy):
 			probs = dict((key, float(val) / n) for key, val in freq.iteritems())
 			estimates.append((sum(p * utils.get(s, 0) for s, p in probs.iteritems()), ac, ))
 
+		if not estimates:
+			continue
+		
 		maxEst, maxAct = max(estimates)
 
 		polEst = dict((act, est, ) for est, act in estimates)[policy.get(s, maxAct)]
@@ -154,7 +157,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 		
 		# do the action with the best policy
 		# or do some random exploration
-		newState, new_reward, isTerminal = env.do(state, bestAction)
+		newState, reward, isTerminal = env.do(state, bestAction)
 
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
@@ -167,12 +170,16 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
 		transs[state][bestAction][newState] += 1
 
-		# We need to get actions on current state!
-		actions = env.getActions(state)
-		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
 
+		actions = env.getActions(newState)
+		bestAction = policy.get(newState, random.choice(actions))
+
+		rewardEstimate, _ = max(_getEstimates(transs, utils, newState,  actions))
+		
 		# Update utility: Bellman equation
-		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
+		utils[newState] = reward + _alpha(freqs.get(state, 0) * rewardEstimate)
+		#print isTerminal, _alpha(freqs.get(state, 0)), reward
+		#print state, utils[state]
 
 		_policy_iteration(transs, utils, policy)
 		
@@ -182,13 +189,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 		# the expected utility; alternatively, if it uses policy iteration, the
 		# optimal policy is already available, so it should simply execute the
 		# action the optimal policy recommends. Or should it?
-		actions = env.getActions(newState)
-		
-		bestAction = policy.get(newState, random.choice(actions))
-
 		
 		state = newState
-		reward = new_reward
 
 		# A GLIE scheme must also eventually become greedy, so that the agent's actions
 		# become optimal with respect to the learned (and hence the true) model. That is
