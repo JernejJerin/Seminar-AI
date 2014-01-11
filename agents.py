@@ -27,28 +27,38 @@ def _alpha(n):
 	"""
 	return 50. / (49 + n)
 
-def _policy_iteration(transs, utils, policy):
+def _policy_iteration(transs, utils, policy, rewards):
 	utils_i = {}
 
-	for s in utils:
-		estimates = []
-		for ac in transs.get(s, {}):
-			freq = transs.get(s, {}).get(ac, {})
-			# Number of states.
-			n = sum(val for val in freq.values())
-			probs = dict((key, float(val) / n) for key, val in freq.iteritems())
-			estimates.append((sum(p * utils.get(s, 0) for s, p in probs.iteritems()), ac, ))
-
-		if not estimates:
-			continue
-		
-		maxEst, maxAct = max(estimates)
-
-		polEst = dict((act, est, ) for est, act in estimates)[policy.get(s, maxAct)]
-
-		if maxEst > polEst or policy.get(s, None) is None:
-			policy[s] = maxAct
+	changes = True
+	while changes:
+		for state in transs:
+			if state not in rewards:
+				continue
+			estimates = max(_getEstimates(transs, utils, state))[0]
+			utils[state] = rewards[state] + estimates
 	
+		changes = False
+		for state in transs:
+			estimates = []
+			for ac in transs.get(state, {}):
+				freq = transs.get(state, {}).get(ac, {})
+				# Number of states.
+				n = sum(val for val in freq.values())
+				probs = dict((key, float(val) / n) for key, val in freq.iteritems())
+	
+				estimates.append((sum(p * utils.get(s, 0) for s, p in probs.iteritems()), ac, ))
+	
+			if not estimates:
+				continue
+			
+			maxEst, maxAct = max(estimates)
+	
+			polEst = dict((act, est, ) for est, act in estimates)[policy.get(state, maxAct)]
+	
+			if maxEst > polEst or policy.get(state, None) is None:
+				policy[state] = maxAct
+				changes = True
 
 def _getEstimates(transs, utils, currState, currActions=None):
 	"""
@@ -102,7 +112,8 @@ def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=N
 			estimates.append((u, ac, ))
 	return estimates
 
-def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwargs):
+def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
+						   rewards={}, **kwargs):
 	"""
 	Active ADP (adaptive dynamic programming) learning
 	algorithm which returns the best policy for a given
@@ -146,7 +157,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 	# Get possible actions with respect to current state.
 
 	actions = env.getActions(state)
-	_policy_iteration(transs, utils, policy)
+	_policy_iteration(transs, utils, policy, rewards)
 	bestAction = policy.get(state, random.choice(actions))
 	
 	while not isTerminal: # while not terminal
@@ -158,7 +169,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 		# do the action with the best policy
 		# or do some random exploration
 		newState, reward, isTerminal = env.do(state, bestAction)
+		rewards[newState] = reward
 
+		
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
 		freqs[newState] += 1
@@ -172,16 +185,11 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={}, **kwar
 
 
 		actions = env.getActions(newState)
-		bestAction = policy.get(newState, random.choice(actions))
-
-		rewardEstimate, _ = max(_getEstimates(transs, utils, newState,  actions))
+		for ac in actions:
+			transs[state].setdefault(ac, {})
+		_policy_iteration(transs, utils, policy, rewards)
 		
-		# Update utility: Bellman equation
-		utils[newState] = reward + _alpha(freqs.get(state, 0) * rewardEstimate)
-		#print isTerminal, _alpha(freqs.get(state, 0)), reward
-		#print state, utils[state]
-
-		_policy_iteration(transs, utils, policy)
+		bestAction = policy.get(newState, random.choice(actions))
 		
 		# Is this part from the book:
 		# Having obtained a utility function U that is optimal for the learned model,
@@ -240,6 +248,8 @@ def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 		# do the action with the best policy
 		# or do some random exploration
 		newState, new_reward, isTerminal = env.do(state, bestAction)
+
+		rewards[newState] = new_reward
 
 		# Not sure which frequency should we increment (new state or current state)?
 		# When testing it works better if using new state!
@@ -366,6 +376,9 @@ class Agent():
 		# Policy table
 		self.policyTable = {}
 
+		# Rewards table
+		self.rewardsTable = {}
+		
 	def getPolicy(self):
 		policy = {}
 		# For every state set appropriate action.
@@ -392,6 +405,7 @@ class Agent():
 						currItrs=itrs,
 						results=self.results,
 						policy=self.policyTable,
+						rewards=self.rewardsTable,
 						**kwargs)
 		return self.getPolicy()
 
