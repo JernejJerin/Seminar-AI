@@ -123,6 +123,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 
 	# Get possible actions with respect to current state.
 	actions = env.getActions(state)
+	freqs.setdefault(state, 0)
+	freqs[state] += 1
+	utils[state] = 0
 	rewardEstimate, bestAction = None, None
 	if len(utils) > 0: # if this is not the first trial
 		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
@@ -141,6 +144,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
+		utils.setdefault(newState, 0)
 		freqs[newState] += 1
 
 		#env.printState(newState)
@@ -150,12 +154,24 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, **kwargs):
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
 		transs[state][bestAction][newState] += 1
 
-		# We need to get actions on current state!
-		actions = env.getActions(state)
-		rewardEstimate, bestAction = max(_getEstimates(transs, utils, state, actions))
+		unchanged = True
 
-		# Update utility: Bellman equation
-		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
+		while unchanged:
+			# Policy evaluation.
+			for s in utils:
+				a = env.getActions(s)
+				rewardEstimate, bestAction = max(_getEstimates(transs, utils, s, a))
+				utils[s] = reward + _alpha(freqs.get(s, 0)) * rewardEstimate
+
+			unchanged = False
+
+			# Policy improvement.
+			for s in utils:
+				a = env.getActions(s)
+				rewardEstimate2, bestAction2 = max(_getEstimates(transs, utils, s, a))
+				rewardBest = sum([pair[0] for pair in _getEstimates(transs, utils, s, bestAction2)])
+				if rewardEstimate2 > rewardBest:
+					unchanged = True
 
 		# Is this part from the book:
 		# Having obtained a utility function U that is optimal for the learned model,
@@ -487,14 +503,16 @@ class Agent():
 
 # lets test it on simple4
 a = Agent()
-a.learn(env.example_book, alg=adp_random_exploration, numOfTrials=100, **{'maxItr': 15,
-			'tStep': 0.005,
+a.learn(env.example_book, alg=adp_random_exploration, numOfTrials=500, **{'maxItr': 20,
+			'tStep': 0.05,
 			'remember': True,
 			})
 print a.getPolicy()
 env.example_book.print_policy(a.getPolicy())
+print a.uTable
 
 # get solution and print it for this simple example
+"""
 solution = a.solve(env.example_book, a.getPolicy())
 print "Solution steps: " + str(solution)
 
@@ -504,3 +522,4 @@ for move in solution[0]:
 	env.example_book.print_state(state)
 	state, reward, is_terminal = env.example_book.do(state, move)
 env.example_book.print_state(state)
+"""
