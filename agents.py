@@ -27,7 +27,7 @@ def _alpha(n):
 	"""
 	return 50. / (49 + n)
 
-def _policy_iteration(transs, utils, policy, rewards):
+def _policy_iteration(transs, utils, policy, rewards, th=1):
 	utils_i = {}
 
 	changes = True
@@ -36,7 +36,7 @@ def _policy_iteration(transs, utils, policy, rewards):
 			if state not in rewards:
 				continue
 			estimates = max(_getEstimates(transs, utils, state))[0]
-			utils[state] = rewards[state] + estimates
+			utils[state] = rewards[state] + th*estimates
 	
 		changes = False
 		for state in transs:
@@ -161,7 +161,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 	# Get possible actions with respect to current state.
 
 	actions = env.getActions(state)
-	_policy_iteration(transs, utils, policy, rewards)
+	_policy_iteration(transs, utils, policy, rewards, th=alpha(itr) )
 	bestAction = policy.get(state, random.choice(actions))
 	
 	while not isTerminal: # while not terminal
@@ -191,7 +191,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		actions = env.getActions(newState)
 		for ac in actions:
 			transs.setdefault(newState, {}).setdefault(ac, {})
-		_policy_iteration(transs, utils, policy, rewards)
+		_policy_iteration(transs, utils, policy, rewards, th=alpha(itr) )
 		
 		bestAction = policy.get(newState, random.choice(actions))
 		
