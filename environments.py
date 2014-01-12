@@ -4,7 +4,7 @@ REWARD_DEFAULT = -2
 REWARD_MOVE_BOX = -1
 REWARD_BOX_ON_END = 15
 REWARD_DEADLOCK = -2000
-REWARD_SOLVED = 200
+REWARD_SOLVED = 2000
 
 class Environment():
 	def __init__(self):

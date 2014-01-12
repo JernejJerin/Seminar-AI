@@ -5,9 +5,9 @@ import operator
 ALGORITHMS = (
 	(a.adp_optimistic_rewards, {
 		e.CELJE.name: {
-			'maxItr': 12,
-			'R_plus': 7,
-			'N_e': 4,
+			'maxItr': 20,
+			'R_plus': 10,
+			'N_e': 15,
 		},
 		e.MARIBOR.name: {
 			'maxItr': 20,

@@ -1,21 +1,5 @@
 import random
 import environments as env
-from math import log
-
-def _f2p(fList):
-	"""
-	Private method for calculating probabilities for
-	each value in a given list fList
-	"""
-	pDict = {}
-	n = len(fList)
-	for val in fList:
-		# calculate frequencies for each value
-		pDict.setdefault(val, 0)
-		pDict[val] += 1
-	# return probabilities
-	return dict((val, freq / n) for val, freq in pDict)
-
 
 def _alpha(n):
 	"""
@@ -27,16 +11,53 @@ def _alpha(n):
 	"""
 	return 50. / (49 + n)
 
-def _policy_iteration(transs, utils, policy, rewards, th=1):
-	utils_i = {}
 
+def _getEstimates(transs, utils, currState, R_plus=None, N_e=None, currActions=None):
+	"""
+	Gets estimates according to current transition states,
+	utility, current state and actions that can be executed
+	in current state.
+
+	transs keys:
+	currState => actions => newState
+
+	For every possible action in currState
+		- get frequencies newState|currState,action
+		- count them: n
+		- get probabilities: divide freqs with n
+		- calculate estimate with bellman
+
+	Return (rewardEstimate, action) pairs in a dict
+	"""
+
+	estimates = []
+	for ac in (currActions or transs.get(currState, {})):
+		# We get N_s_a from transition table.
+		freq = transs.get(currState, {}).get(ac, {})
+
+		# Number of states.
+		n = sum(val for val in freq.values())
+		probs = dict((key, float(val) / n) for key, val in freq.iteritems())
+		u = sum(p * utils.get(s, 0) for s, p in probs.iteritems())
+
+		# This if function f from page 842. Otherwise we are doing normal estimation.
+		# It means if the number of actions a that were executed in state s is not high enough,
+		# it means we should set some optimistic reward to search more into that direction.
+		if R_plus is not None and N_e is not None and n < N_e:
+			estimates.append((R_plus, ac, ))
+		else:
+			estimates.append((u, ac, ))
+	return estimates
+
+
+def _policy_iteration(transs, utils, policy, rewards, R_plus=None, N_e=None, th=1):
 	changes = True
 	while changes:
 		for state in transs:
 			if state not in rewards:
 				continue
-			estimates = max(_getEstimates(transs, utils, state))[0]
-			utils[state] = rewards[state] + th*estimates
+			estimates = max(_getEstimates(transs, utils, state, R_plus, N_e))[0]
+			utils[state] = rewards[state] + th * estimates
 	
 		changes = False
 		for state in transs:
@@ -60,57 +81,6 @@ def _policy_iteration(transs, utils, policy, rewards, th=1):
 				policy[state] = maxAct
 				changes = True
 
-def _getEstimates(transs, utils, currState, currActions=None):
-	"""
-	Gets estimates according to current transition states,
-	utility, current state and actions that can be executed
-	in current state.
-
-	transs keys:
-	currState => actions => newState
-	
-	For every possible action in currState
-		- get frequencies newState|currState,action
-		- count them: n
-		- get probabilities: divide freqs with n
-		- calculate estimate with bellman
-	
-	Return (rewardEstimate, action) pairs in a dict
-	"""
-
-	estimates = []
-	for ac in (currActions or transs.get(currState, {})):
-		freq = transs.get(currState, {}).get(ac, {})
-		# Number of states.
-		n = sum(val for val in freq.values())
-		probs = dict((key, float(val) / n) for key, val in freq.iteritems())
-		estimates.append((sum(p * utils.get(s, 0) for s, p in probs.iteritems()), ac, ))
-	return estimates
-
-
-def _getEstimatesOptimistic(transs, utils, currState, R_plus, N_e, currActions=None):
-	"""
-	Gets estimates for optimistic.
-
-	Return (rewardEstimate, action) pairs in a dict
-	"""
-
-	estimates = []
-	for ac in (currActions or transs.get(currState, {})):
-		# We get N_s_a from transition table.
-		freq = transs.get(currState, {}).get(ac, {})
-
-		# Number of states.
-		n = sum(val for val in freq.values())
-		probs = dict((key, float(val) / n) for key, val in freq.iteritems())
-		u = sum(p * utils.get(s, 0) for s, p in probs.iteritems())
-
-		# This if function f from page 842.
-		if n < N_e:
-			estimates.append((R_plus, ac, ))
-		else:
-			estimates.append((u, ac, ))
-	return estimates
 
 def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 						   rewards={}, **kwargs):
@@ -150,16 +120,9 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 	itr = 0
 	isTerminal = False
 	state = env.getStartingState()
-
-	# Start reward should be zero.
-	reward = 0
-
-
 	rewardSum = 0
 
-	
 	# Get possible actions with respect to current state.
-
 	actions = env.getActions(state)
 	_policy_iteration(transs, utils, policy, rewards, th=alpha(itr) )
 	bestAction = policy.get(state, random.choice(actions))
@@ -187,7 +150,6 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
 		transs[state][bestAction][newState] += 1
 
-
 		actions = env.getActions(newState)
 		for ac in actions:
 			transs.setdefault(newState, {}).setdefault(ac, {})
@@ -212,7 +174,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 			break
 	return itr, rewardSum
 
-def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, **kwargs):
+def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, policy={},
+						   rewards = {}, **kwargs):
 	"""
 	Active ADP (adaptive dynamic programming)
 
@@ -233,15 +196,12 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, **kwargs):
 	itr = 0
 	isTerminal = False
 	state = env.getStartingState()
-
-	# Start reward should be zero.
-	reward = 0
+	rewardSum = 0
 
 	# Get possible actions with respect to current state.
 	actions = env.getActions(state)
-	rewardEstimate, bestAction = None, None
-	if len(utils) > 0: # if this is not the first trial
-		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, state, R_plus, N_e, actions))
+	_policy_iteration(transs, utils, policy, rewards, R_plus=R_plus, N_e=N_e, th=alpha(itr))
+	bestAction = policy.get(state, random.choice(actions))
 
 	while not isTerminal: # while not terminal
 		if bestAction is None:
@@ -251,7 +211,9 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, **kwargs):
 
 		# do the action with the best policy
 		# or do some random exploration
-		newState, new_reward, isTerminal = env.do(state, bestAction)
+		newState, reward, isTerminal = env.do(state, bestAction)
+		rewards[newState] = reward
+		rewardSum += reward
 
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
@@ -262,30 +224,20 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, **kwargs):
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
 		transs[state][bestAction][newState] += 1
 
-		# We need to get actions on current state!
-		actions = env.getActions(state)
-		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, state, R_plus, N_e, actions))
+		# We need to get actions on new state.
+		actions = env.getActions(newState)
+		for ac in actions:
+			transs.setdefault(newState, {}).setdefault(ac, {})
+		_policy_iteration(transs, utils, policy, rewards, R_plus=R_plus, N_e=N_e, th=alpha(itr))
 
-		# Update utility: Bellman equation
-		utils[state] = reward + _alpha(freqs.get(state, 0)) * rewardEstimate
-
-		# Is this part from the book:
-		# Having obtained a utility function U that is optimal for the learned model,
-		# the agent can extract an optimal action by one-step look-ahead to maximize
-		# the expected utility; alternatively, if it uses policy iteration, the
-		# optimal policy is already available, so it should simply execute the
-		# action the optimal policy recommends. Or should it?
-		new_actions = env.getActions(newState)
-		rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, newState, R_plus, N_e, new_actions))
-
-		actions = new_actions
+		#rewardEstimate, bestAction = max(_getEstimatesOptimistic(transs, utils, state, R_plus, N_e, actions))
+		bestAction = policy.get(newState, random.choice(actions))
 		state = newState
-		reward = new_reward
 
 		itr += 1
 		if itr >= maxItr:
 			break
-	return itr
+	return itr, rewardSum
 
 
 # Agent class.

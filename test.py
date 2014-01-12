@@ -4,10 +4,8 @@ import agents as a
 import operator
 
 ALGORITHMS = (
-#	a.adp_optimistic_rewards,
+	a.adp_optimistic_rewards,
 	a.adp_random_exploration,
-	a.adp_random_exploration_unknown,
-#	a.adp_random_exploration_state,
 )
 MAX_ITERATIONS = (
 	20, 30, 40
