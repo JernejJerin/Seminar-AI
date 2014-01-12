@@ -154,6 +154,10 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 	# Start reward should be zero.
 	reward = 0
 
+
+	rewardSum = 0
+
+	
 	# Get possible actions with respect to current state.
 
 	actions = env.getActions(state)
@@ -170,7 +174,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		# or do some random exploration
 		newState, reward, isTerminal = env.do(state, bestAction)
 		rewards[newState] = reward
-
+		rewardSum += reward
 		
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
@@ -206,7 +210,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		t, itr = t + tStep, itr + 1
 		if itr >= maxItr:
 			break
-	return itr
+	return itr, rewardSum
 
 def adp_random_exploration_state(env, transs={}, utils={}, freqs={}, **kwargs):
 	"""
@@ -378,6 +382,9 @@ class Agent():
 
 		# Rewards table
 		self.rewardsTable = {}
+
+		# history
+		self.history = []
 		
 	def getPolicy(self):
 		policy = {}
@@ -398,7 +405,7 @@ class Agent():
 		itrs = 0
 		self.clearExperience()
 		for trial in range(numOfTrials):
-			itrs += alg(env,
+			currItrs, reward = alg(env,
 						transs=self.transTable,
 						utils=self.uTable,
 						freqs=self.nTable,
@@ -407,6 +414,12 @@ class Agent():
 						policy=self.policyTable,
 						rewards=self.rewardsTable,
 						**kwargs)
+			itrs += currItrs
+
+			self.history.append({
+				'reward': reward,
+				'steps': currItrs,
+			})
 		return self.getPolicy()
 
 	def solve(self, env, policy):
