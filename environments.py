@@ -405,7 +405,7 @@ MARIBOR = Sokoban("MARIBOR", [
 LJUBLJANA = Sokoban("Ljubljana", [
 	"  ######      ",
 	"  ##*  #######",
-	" ##    B     #"
+	" ##    B     #",
 	"##     B     #",
 	"#*     A     #",
 	"#### ## ### ##",

@@ -136,6 +136,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		# do the action with the best policy
 		# or do some random exploration
 		newState, reward, isTerminal = env.do(state, bestAction)
+
 		rewards[newState] = reward
 		rewardSum += reward
 		
