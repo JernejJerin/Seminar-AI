@@ -293,12 +293,13 @@ class Agent():
 						**kwargs)
 			itrs += currItrs
 
-			result = self.solve(env, self.getPolicy())
+			result, energy = self.solve(env, self.getPolicy())
 			
 			self.history.append({
 				'reward': reward,
 				'steps': currItrs,
-				'length': len(result)
+				'length': len(result),
+				'energy': energy,
 			})
 		return self.getPolicy()
 
