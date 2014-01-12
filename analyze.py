@@ -38,20 +38,6 @@ ALGORITHMS = (
 			'remember': True,
 		}
 	}),
-	(a.adp_random_exploration_state, {
-		e.CELJE.name: {
-			'maxItr': 20,
-			'logFac': 1.1,
-		},
-		e.MARIBOR.name: {
-			'maxItr': 20,
-			'logFac': 1.1,
-		},
-		e.LJUBLJANA.name: {
-			'maxItr': 20,
-			'logFac': 1.1,
-		}		
-	}),
 )
 
 STOP_AFTER_ONE = True
