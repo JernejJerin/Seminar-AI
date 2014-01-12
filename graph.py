@@ -32,6 +32,8 @@ def plot_agents(agents, field,
 
 		plt.plot(x,y, label=name, color=COLORS[i % len(COLORS)])
 		i += 1
+
+	plt.legend()	
 	if fname:
 		plt.savefig(fname)
 	if show:

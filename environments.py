@@ -368,7 +368,7 @@ boxworld1 = Sokoban("boxworld1", [ # candidate
 	"#* BA###",
 	"####B#",
 	"   #*#",
-	"   ###"
+	"   ###",
 ])
 
 boxworld2 = Sokoban("boxworld2", [
@@ -380,11 +380,11 @@ boxworld2 = Sokoban("boxworld2", [
 	" ##    *#",
 	" #   #  #",
 	" #   ####",
-	" #####   "
+	" #####   ",
 ])
 
 CELJE = Sokoban("Celje", [
-	"#####"
+	"#####",
 	"#  *#",
 	"# B #",
 	"#A  #",
@@ -411,3 +411,4 @@ LJUBLJANA = Sokoban("Ljubljana", [
 	"#### ## ### ##",
 	"   ###### ### ",
 ])
+
