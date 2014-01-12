@@ -268,11 +268,7 @@ class Agent():
 		self.history = []
 		
 	def getPolicy(self):
-		policy = {}
-		# For every state set appropriate action.
-		for state in self.transTable:
-			policy[state] = max(_getEstimates(self.transTable, self.uTable, state))[1]
-		return policy
+		return self.policyTable
 
 	def learn(self, env, alg=adp_random_exploration, numOfTrials=150, **kwargs):
 		"""
@@ -297,9 +293,12 @@ class Agent():
 						**kwargs)
 			itrs += currItrs
 
+			result = self.solve(env, self.getPolicy())
+			
 			self.history.append({
 				'reward': reward,
 				'steps': currItrs,
+				'length': len(result)
 			})
 		return self.getPolicy()
 
