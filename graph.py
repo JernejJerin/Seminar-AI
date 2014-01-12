@@ -3,23 +3,37 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
+COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+FIELDS = {
+	'reward': 'Reward',
+	'steps': 'Number of steps',
+	'length': 'Solution length',
+	'energy': 'Reward'
+}
+
 def plot_agents(agents, field,
 				title='Scalability',
 				show=True,
+				func=None,
 				fname=False):
-	colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-	i = random.randint(0, len(colors) - 1)
+	
+	i = random.randint(0, len(COLORS) - 1)
+	plt.close()
 	plt.title(title)
-	plt.xlabel('number of trials')
-	plt.ylabel(field)
+	plt.xlabel('Number of trials')
+	plt.ylabel(FIELDS[field])
+
+	if not func:
+		func = lambda x, other: x
+	
 	for name, agnt in agents.iteritems():
 		x = np.arange(1, len(agnt.history)+1, 1)
-		y = np.array([h[field] for h in agnt.history])
-		from pprint import pprint
-		pprint(y)
-		plt.plot(x,y, label=name, color=colors[i % len(colors)])
+		y = np.array([func(h[field], h) for h in agnt.history])
+
+		plt.plot(x,y, label=name, color=COLORS[i % len(COLORS)])
 		i += 1
-	if show:
-		plt.show()
 	if fname:
 		plt.savefig(fname)
+	if show:
+		plt.show()
+
