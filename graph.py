@@ -10,4 +10,4 @@ def plot_agents(agents, field):
 		y = np.array([h[field] for h in a.history])
 
 		plt.plot(x,y)
-		plt.show()
+	plt.show()
