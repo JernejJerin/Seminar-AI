@@ -4,7 +4,7 @@ REWARD_DEFAULT = -2
 REWARD_MOVE_BOX = -1
 REWARD_BOX_ON_END = 15
 REWARD_DEADLOCK = -2000
-REWARD_SOLVED = 2000
+REWARD_SOLVED = 200
 
 class Environment():
 	def __init__(self):
@@ -384,9 +384,11 @@ boxworld2 = Sokoban("boxworld2", [
 ])
 
 CELJE = Sokoban("Celje", [
-	"  *",
-	" B ",
-	"A  ",
+	"#####"
+	"#  *#",
+	"# B #",
+	"#A  #",
+	"#####",
 ])
 
 MARIBOR = Sokoban("MARIBOR", [
@@ -395,15 +397,17 @@ MARIBOR = Sokoban("MARIBOR", [
 	"  # ####",
 	"###B B*#",
 	"#* BA###",
-	"####B#",
-	"   #*#",
-	"   ###"
+	"####B#"  ,
+	"   #*#"  ,
+	"   ###"  ,
 ])
 
 LJUBLJANA = Sokoban("Ljubljana", [
-	"###*  ######",
-	"##    B     "
-	"#     B     ",
-	"*     A     ",
-	"### ## ### #",
+	"  ######      ",
+	"  ##*  #######",
+	" ##    B     #"
+	"##     B     #",
+	"#*     A     #",
+	"#### ## ### ##",
+	"   ###### ### ",
 ])

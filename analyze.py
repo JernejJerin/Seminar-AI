@@ -6,18 +6,18 @@ ALGORITHMS = (
 	(a.adp_optimistic_rewards, {
 		e.CELJE.name: {
 			'maxItr': 20,
-			'R_plus': 10,
-			'N_e': 15,
+			'R_plus': 1,
+			'N_e': 1,
 		},
 		e.MARIBOR.name: {
 			'maxItr': 20,
-			'R_plus': 2,
-			'N_e': 5,
+			'R_plus': 1,
+			'N_e': 1,
 		},
 		e.LJUBLJANA.name: {
 			'maxItr': 20,
-			'R_plus': 2,
-			'N_e': 5,
+			'R_plus': 1,
+			'N_e': 1,
 		}
 	}),
 	(a.adp_random_exploration, {

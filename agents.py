@@ -143,8 +143,6 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		freqs.setdefault(newState, 0)
 		freqs[newState] += 1
 
-		#env.printState(newState)
-		
 		# update transition table. The first one returns dictionary of actions for specific state and the
 		# second one a dictionary of possible states from specific action (best action).
 		transs.setdefault(state, {}).setdefault(bestAction, {}).setdefault(newState, 0)
@@ -153,7 +151,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		actions = env.getActions(newState)
 		for ac in actions:
 			transs.setdefault(newState, {}).setdefault(ac, {})
-		_policy_iteration(transs, utils, policy, rewards, th=alpha(itr) )
+		_policy_iteration(transs, utils, policy, rewards, th=alpha(itr))
 		
 		bestAction = policy.get(newState, random.choice(actions))
 		
