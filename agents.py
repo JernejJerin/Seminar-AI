@@ -122,6 +122,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 	state = env.getStartingState()
 	rewardSum = 0
 
+	lastReward = False
+	
 	# Get possible actions with respect to current state.
 	actions = env.getActions(state)
 	_policy_iteration(transs, utils, policy, rewards, th=alpha(itr) )
@@ -137,6 +139,8 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		# or do some random exploration
 		newState, reward, isTerminal = env.do(state, bestAction)
 
+		lastReward = reward >= 0
+		
 		rewards[newState] = reward
 		rewardSum += reward
 		
@@ -171,7 +175,7 @@ def adp_random_exploration(env, transs={}, utils={}, freqs={}, policy={},
 		t, itr = t + tStep, itr + 1
 		if itr >= maxItr:
 			break
-	return itr, rewardSum
+	return itr, rewardSum, lastReward
 
 def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, policy={},
 						   rewards = {}, **kwargs):
@@ -196,7 +200,9 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, policy={},
 	isTerminal = False
 	state = env.getStartingState()
 	rewardSum = 0
+	lastReward = False
 
+	
 	# Get possible actions with respect to current state.
 	actions = env.getActions(state)
 	_policy_iteration(transs, utils, policy, rewards, R_plus=R_plus, N_e=N_e, th=alpha(itr))
@@ -213,6 +219,7 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, policy={},
 		newState, reward, isTerminal = env.do(state, bestAction)
 		rewards[newState] = reward
 		rewardSum += reward
+		lastReward = reward >= 0
 
 		# Set to zero if newState does not exist yet. For new state?
 		freqs.setdefault(newState, 0)
@@ -236,7 +243,7 @@ def adp_optimistic_rewards(env, transs={}, utils={}, freqs={}, policy={},
 		itr += 1
 		if itr >= maxItr:
 			break
-	return itr, rewardSum
+	return itr, rewardSum, lastReward
 
 
 # Agent class.
@@ -281,7 +288,7 @@ class Agent():
 		itrs = 0
 		self.clearExperience()
 		for trial in range(numOfTrials):
-			currItrs, reward = alg(env,
+			currItrs, reward, win = alg(env,
 						transs=self.transTable,
 						utils=self.uTable,
 						freqs=self.nTable,
@@ -299,6 +306,7 @@ class Agent():
 				'steps': currItrs,
 				'length': len(result),
 				'energy': energy,
+				'win': win,
 			})
 		return self.getPolicy()
 
